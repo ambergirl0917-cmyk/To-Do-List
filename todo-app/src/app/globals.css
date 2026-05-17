@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pink-50: #FFF5F8;
+  --pink-100: #FDE8F0;
+  --pink-200: #FADDE8;
+  --pink-300: #F9D6E3;
+  --pink-400: #F4AFC8;
+  --pink-500: #E8829F;
+  --pink-600: #D4627F;
+  --pink-700: #B5476A;
+  --pink-800: #993556;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--pink-50);
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--pink-300); border-radius: 4px; }
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.drag-handle { cursor: grab; }
+.drag-handle:active { cursor: grabbing; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slideIn { animation: slideIn 0.15s ease-out; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fadeIn { animation: fadeIn 0.2s ease-out; }
