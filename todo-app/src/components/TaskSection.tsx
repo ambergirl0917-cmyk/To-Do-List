@@ -97,8 +97,8 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
   const headerStyle = color ? { borderTopColor: color, borderTopWidth: '3px' } : {}
 
   return (
-    <div className="bg-white rounded-xl border border-pink-100 overflow-hidden shadow-sm">
-      <div className="flex items-center justify-between px-4 py-2.5 bg-pink-50 border-b border-pink-100" style={headerStyle}>
+    <div className="bg-white rounded-xl border border-pink-100 shadow-sm">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-pink-50 border-b border-pink-100 rounded-t-xl" style={headerStyle}>
         <div className="flex items-center gap-2">
           {color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />}
           <span className="text-sm font-semibold text-pink-700">{sectionName}</span>
@@ -147,7 +147,7 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
         </DndContext>
       )}
 
-      <button onClick={addTask} className="w-full text-left px-4 py-2 text-xs text-pink-300 hover:text-pink-500 hover:bg-pink-50 transition-colors flex items-center gap-1">
+      <button onClick={addTask} className="w-full text-left px-4 py-2 text-xs text-pink-300 hover:text-pink-500 hover:bg-pink-50 transition-colors rounded-b-xl flex items-center gap-1">
         <span>+</span> Add task
       </button>
     </div>
