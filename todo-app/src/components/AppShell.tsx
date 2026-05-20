@@ -14,49 +14,66 @@ import WeeklyPlannerPage from './pages/WeeklyPlannerPage'
 import DeadlinesPage from './pages/DeadlinesPage'
 import ArchivePage from './pages/ArchivePage'
 import SettingsPage from './pages/SettingsPage'
-import UrgentPill from './UrgentPill'
 import { Task } from '@/lib/types'
 
 export type PageId = 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings'
 
 interface AppShellProps { user: User }
 
+function localDateStr(offsetDays = 0): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export default function AppShell({ user }: AppShellProps) {
   const [currentPage, setCurrentPage] = useState<PageId>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [urgentTasks, setUrgentTasks] = useState<Task[]>([])
-  const [undoStack, setUndoStack] = useState<any[]>([])
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [focusMode, setFocusMode] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  useEffect(() => {
-    fetchUrgentTasks()
-  }, [user])
+  useEffect(() => { fetchUrgentTasks() }, [user])
 
   const fetchUrgentTasks = async () => {
-    const today = new Date()
-    const twoDaysLater = new Date(today)
-    twoDaysLater.setDate(today.getDate() + 2)
+    const todayStr = localDateStr(0)
+    const in14DaysStr = localDateStr(14)
 
     const { data } = await supabase
       .from('tasks')
-      .select('*, sections(name)')
+      .select('*')
       .eq('user_id', user.id)
       .eq('is_archived', false)
       .neq('progress', '100%')
       .not('due_date', 'is', null)
-      .lte('due_date', twoDaysLater.toISOString().split('T')[0])
-      .gte('due_date', today.toISOString().split('T')[0])
+      .gte('due_date', todayStr)
+      .lte('due_date', in14DaysStr)
       .order('due_date', { ascending: true })
+      .limit(20)
 
-    if (data) setUrgentTasks(data)
-  }
-
-  const handleUndo = () => {
-    if (undoStack.length === 0) return
-    const last = undoStack[undoStack.length - 1]
-    last.undo()
-    setUndoStack(prev => prev.slice(0, -1))
+    if (data) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const urgent: Task[] = []
+      const upcoming: Task[] = []
+      for (const task of data) {
+        const [y, m, d] = task.due_date.split('-').map(Number)
+        const dueDate = new Date(y, m - 1, d)
+        const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        const threshold = task.reminder_days ?? 2
+        if (diffDays <= threshold) {
+          urgent.push(task)
+        } else if (upcoming.length < 5) {
+          upcoming.push(task)
+        }
+      }
+      setUrgentTasks(urgent)
+      setUpcomingTasks(upcoming)
+    }
   }
 
   const renderPage = () => {
@@ -81,8 +98,7 @@ export default function AppShell({ user }: AppShellProps) {
       <TopBar
         user={user}
         urgentTasks={urgentTasks}
-        onUndo={handleUndo}
-        canUndo={undoStack.length > 0}
+        upcomingTasks={upcomingTasks}
         focusMode={focusMode}
         onToggleFocus={() => setFocusMode(f => !f)}
         searchQuery={searchQuery}
@@ -90,9 +106,7 @@ export default function AppShell({ user }: AppShellProps) {
         onToggleSidebar={() => setSidebarOpen(s => !s)}
       />
       <div className="flex flex-1 overflow-hidden">
-        {sidebarOpen && (
-          <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
-        )}
+        {sidebarOpen && <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {renderPage()}
         </main>
