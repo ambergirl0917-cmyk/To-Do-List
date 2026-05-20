@@ -84,4 +84,16 @@ export default function TopBar({ user, urgentTasks, upcomingTasks, focusMode, on
           {showUserMenu && (
             <div className="absolute right-0 top-10 bg-white rounded-xl shadow-lg border border-pink-100 py-2 w-44 z-50">
               <div className="px-3 py-2 border-b border-pink-50">
-                <p className="text-
+                <p className="text-sm font-medium text-gray-800 truncate">{name}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              </div>
+              <button onClick={handleSignOut} className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
