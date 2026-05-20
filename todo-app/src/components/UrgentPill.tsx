@@ -37,7 +37,7 @@ export default function UrgentPill({ tasks, upcomingTasks }: UrgentPillProps) {
               </div>
               {tasks.map(task => (
                 <div key={task.id} className="px-3 py-2 hover:bg-pink-50 transition-colors">
-                  <p className="text-sm text-gray-700 truncate">{task.title}</p>
+                  <p className="text-sm text-gray-700 truncate">{task.task}</p>
                   <p className="text-xs text-red-400">{task.due_date}</p>
                 </div>
               ))}
@@ -50,7 +50,7 @@ export default function UrgentPill({ tasks, upcomingTasks }: UrgentPillProps) {
               </div>
               {upcomingTasks.map(task => (
                 <div key={task.id} className="px-3 py-2 hover:bg-pink-50 transition-colors">
-                  <p className="text-sm text-gray-700 truncate">{task.title}</p>
+                  <p className="text-sm text-gray-700 truncate">{task.task}</p>
                   <p className="text-xs text-pink-300">{task.due_date}</p>
                 </div>
               ))}
