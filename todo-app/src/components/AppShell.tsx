@@ -85,8 +85,7 @@ export default function AppShell({ user }: AppShellProps) {
       case 'sat': return <SATPage {...props} />
       case 'extracurricular': return <ExtracurricularPage {...props} />
       case 'college': return <CollegeAppPage {...props} />
-      case 'planner': return <WeeklyPlannerPage user={user} />
-      case 'deadlines': return <DeadlinesPage user={user} />
+case 'planner': return <WeeklyPlannerPage user={user} totalWeeks={parseInt(localStorage.getItem(`planner_weeks_${user.id}`) || '3')} />      case 'deadlines': return <DeadlinesPage user={user} />
       case 'archive': return <ArchivePage user={user} />
       case 'settings': return <SettingsPage user={user} />
       default: return <OverviewPage {...props} />
