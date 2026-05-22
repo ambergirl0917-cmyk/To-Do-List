@@ -2,22 +2,108 @@
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { WeeklySlot, Progress } from '@/lib/types'
+import { WeeklySlot, Progress, ChecklistItem } from '@/lib/types'
 import { getProgressColor } from '@/lib/showsAs'
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 const PROGRESS_OPTIONS: Progress[] = ['0%','20%','50%','70%','100%']
 
-const TIME_OPTIONS = [
-  '6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM',
-  '9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
-  '12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
-  '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM',
-  '6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM',
-  '9:00 PM','9:30 PM','10:00 PM',
-]
+function generateTimeOptions() {
+  const times: string[] = []
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const period = h < 12 ? 'AM' : 'PM'
+      const hour = h === 0 ? 12 : h > 12 ? h - 12 : h
+      const min = m.toString().padStart(2, '0')
+      times.push(`${hour}:${min} ${period}`)
+    }
+  }
+  return times
+}
+const TIME_OPTIONS = generateTimeOptions()
 
-interface Props { user: User }
+interface Props { user: User; totalWeeks?: number }
+
+function SlotNotesPanel({ slot, onUpdate, onClose }: {
+  slot: WeeklySlot
+  onUpdate: (id: string, updates: Partial<WeeklySlot>) => void
+  onClose: () => void
+}) {
+  const [newItem, setNewItem] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState('')
+  const checklist: ChecklistItem[] = slot.checklist || []
+
+  const addItem = () => {
+    if (!newItem.trim()) return
+    const item: ChecklistItem = { id: Date.now().toString(), text: newItem.trim(), done: false }
+    onUpdate(slot.id, { checklist: [...checklist, item] })
+    setNewItem('')
+  }
+
+  const toggleItem = (id: string) => {
+    onUpdate(slot.id, { checklist: checklist.map(i => i.id === id ? { ...i, done: !i.done } : i) })
+  }
+
+  const deleteItem = (id: string) => {
+    onUpdate(slot.id, { checklist: checklist.filter(i => i.id !== id) })
+  }
+
+  const saveEdit = () => {
+    if (!editingId) return
+    onUpdate(slot.id, { checklist: checklist.map(i => i.id === editingId ? { ...i, text: editingText } : i) })
+    setEditingId(null)
+  }
+
+  return (
+    <div className="bg-pink-50/50 border border-pink-100 rounded-xl px-4 py-3 mt-1 mb-2">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-pink-600">Notes & Checklist</span>
+        <button onClick={onClose} className="text-pink-300 hover:text-pink-500 text-lg leading-none">&times;</button>
+      </div>
+      <textarea
+        value={slot.notes || ''}
+        onChange={e => onUpdate(slot.id, { notes: e.target.value })}
+        placeholder="Add notes..."
+        className="w-full text-sm text-gray-600 bg-white border border-pink-100 rounded-lg px-3 py-2 outline-none resize-none focus:border-pink-300 mb-2"
+        rows={2}
+      />
+      <div className="space-y-1 mb-2">
+        {checklist.map(item => (
+          <div key={item.id} className="flex items-center gap-2 group">
+            <input type="checkbox" checked={item.done} onChange={() => toggleItem(item.id)} className="accent-pink-500 flex-shrink-0" />
+            {editingId === item.id ? (
+              <input
+                value={editingText}
+                onChange={e => setEditingText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingId(null) }}
+                onBlur={saveEdit}
+                autoFocus
+                className="flex-1 text-sm bg-white border border-pink-300 rounded px-2 py-0.5 outline-none"
+              />
+            ) : (
+              <span
+                onDoubleClick={() => { setEditingId(item.id); setEditingText(item.text) }}
+                className={`text-sm flex-1 cursor-text ${item.done ? 'line-through text-gray-400' : 'text-gray-600'}`}
+              >{item.text}</span>
+            )}
+            <button onClick={() => deleteItem(item.id)} className="text-pink-200 hover:text-pink-400 opacity-0 group-hover:opacity-100 text-lg leading-none">&times;</button>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={newItem}
+          onChange={e => setNewItem(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addItem()}
+          placeholder="Add checklist item..."
+          className="flex-1 text-sm bg-white border border-pink-100 rounded-lg px-3 py-1.5 outline-none focus:border-pink-300"
+        />
+        <button onClick={addItem} className="text-xs bg-pink-500 text-white px-3 py-1.5 rounded-lg hover:bg-pink-600">Add</button>
+      </div>
+    </div>
+  )
+}
 
 function TimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [editMode, setEditMode] = useState(false)
@@ -48,9 +134,12 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
   )
 }
 
-export default function WeeklyPlannerPage({ user }: Props) {
+export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }: Props) {
   const [slots, setSlots] = useState<WeeklySlot[]>([])
-  const [view, setView] = useState<'list'|'calendar'>('list')
+  const [weekNotes, setWeekNotes] = useState<Record<string, string>>({})
+  const [totalWeeks, setTotalWeeks] = useState(initialWeeks)
+  const [activeWeek, setActiveWeek] = useState(1)
+  const [openNotesId, setOpenNotesId] = useState<string | null>(null)
 
   useEffect(() => { fetchSlots() }, [user])
 
@@ -62,10 +151,11 @@ export default function WeeklyPlannerPage({ user }: Props) {
     if (data) setSlots(data)
   }
 
-  const addSlot = async (day: string) => {
-    const daySlots = slots.filter(s => s.day === day)
+  const addSlot = async (day: string, week: number) => {
+    const daySlots = slots.filter(s => s.day === day && s.week_number === week)
     const { data } = await supabase.from('weekly_slots').insert({
-      user_id: user.id, day, time_slot: '', task: '', notes: '', progress: '0%', position: daySlots.length
+      user_id: user.id, day, time_slot: '', task: '', notes: '', progress: '0%',
+      position: daySlots.length, week_number: week, checklist: []
     }).select().single()
     if (data) setSlots(prev => [...prev, data])
   }
@@ -80,100 +170,117 @@ export default function WeeklyPlannerPage({ user }: Props) {
     await supabase.from('weekly_slots').delete().eq('id', id)
   }
 
-  const timeToHour = (t: string): number => {
+  const timeToMinutes = (t: string): number => {
     if (!t) return -1
     const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
     if (!match) return -1
     let h = parseInt(match[1])
+    const m = parseInt(match[2])
     const isPM = match[3].toUpperCase() === 'PM'
     if (isPM && h !== 12) h += 12
     if (!isPM && h === 12) h = 0
-    return h
+    return h * 60 + m
   }
 
-  const CALENDAR_HOURS = Array.from({ length: 17 }, (_, i) => i + 6)
+  const weekSlots = slots.filter(s => (s.week_number ?? 1) === activeWeek)
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-pink-700">Weekly Planner</h2>
-        <div className="flex bg-pink-100 rounded-lg p-0.5">
-          <button onClick={() => setView('list')} className={`text-xs px-3 py-1.5 rounded-md transition-colors ${view==='list' ? 'bg-white text-pink-700 shadow-sm font-medium' : 'text-pink-500'}`}>List</button>
-          <button onClick={() => setView('calendar')} className={`text-xs px-3 py-1.5 rounded-md transition-colors ${view==='calendar' ? 'bg-white text-pink-700 shadow-sm font-medium' : 'text-pink-500'}`}>Calendar</button>
+        <div className="flex items-center gap-2">
+          {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+            <button
+              key={w}
+              onClick={() => setActiveWeek(w)}
+              className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${activeWeek === w ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-500 hover:bg-pink-200'}`}
+            >
+              Week {w}
+            </button>
+          ))}
         </div>
       </div>
 
-      {view === 'list' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {DAYS.map(day => {
-            const daySlots = slots.filter(s => s.day === day).sort((a, b) => {
-              const ha = timeToHour(a.time_slot), hb = timeToHour(b.time_slot)
-              if (ha === -1) return 1
-              if (hb === -1) return -1
-              return ha - hb
+      <div className="space-y-6">
+        {DAYS.map(day => {
+          const daySlots = weekSlots
+            .filter(s => s.day === day)
+            .sort((a, b) => {
+              const ma = timeToMinutes(a.time_slot), mb = timeToMinutes(b.time_slot)
+              if (ma === -1) return 1
+              if (mb === -1) return -1
+              return ma - mb
             })
-            return (
-              <div key={day} className="bg-white rounded-xl border border-pink-100 overflow-hidden shadow-sm">
-                <div className="bg-pink-50 px-4 py-2.5 border-b border-pink-100 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-pink-700">{day}</span>
-                  <button onClick={() => addSlot(day)} className="text-xs bg-pink-500 text-white px-2.5 py-1 rounded-lg hover:bg-pink-600 transition-colors">+ Add</button>
-                </div>
-                <div className="divide-y divide-pink-50">
-                  {daySlots.map(slot => (
-                    <div key={slot.id} className="flex items-center gap-2 px-3 py-2 group">
+          const noteKey = `${activeWeek}-${day}`
+
+          return (
+            <div key={day} className="bg-white rounded-xl border border-pink-100 shadow-sm">
+              {/* Day note */}
+              <div className="px-4 pt-3 pb-2 border-b border-pink-50">
+                <input
+                  value={weekNotes[noteKey] || ''}
+                  onChange={e => setWeekNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
+                  placeholder={`Notes for ${day}...`}
+                  className="w-full text-xs text-gray-500 bg-pink-50/50 border border-pink-100 rounded-lg px-3 py-1.5 outline-none focus:border-pink-300"
+                />
+              </div>
+
+              {/* Day header */}
+              <div className="bg-pink-50 px-4 py-2.5 flex items-center justify-between">
+                <span className="text-sm font-semibold text-pink-700">{day}</span>
+                <button onClick={() => addSlot(day, activeWeek)} className="text-xs bg-pink-500 text-white px-2.5 py-1 rounded-lg hover:bg-pink-600 transition-colors">+ Add</button>
+              </div>
+
+              {/* Slots */}
+              <div className="divide-y divide-pink-50">
+                {daySlots.map(slot => (
+                  <div key={slot.id}>
+                    <div className="flex items-center gap-2 px-3 py-2 group">
                       <TimeInput value={slot.time_slot} onChange={v => updateSlot(slot.id, { time_slot: v })} />
-                      <input value={slot.task} onChange={e => updateSlot(slot.id, { task: e.target.value })}
-                        placeholder="Task..." className="flex-1 text-sm text-gray-700 bg-transparent outline-none min-w-0" />
-                      <select value={slot.progress} onChange={e => updateSlot(slot.id, { progress: e.target.value as Progress })}
-                        className={`text-xs px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 ${getProgressColor(slot.progress)}`}>
+                      <input
+                        value={slot.task}
+                        onChange={e => updateSlot(slot.id, { task: e.target.value })}
+                        placeholder="Task..."
+                        className="flex-1 text-sm text-gray-700 bg-transparent outline-none min-w-0"
+                      />
+                      <select
+                        value={slot.progress}
+                        onChange={e => updateSlot(slot.id, { progress: e.target.value as Progress })}
+                        className={`text-xs px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 ${getProgressColor(slot.progress)}`}
+                      >
                         {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
                       </select>
-                      <button onClick={() => deleteSlot(slot.id)}
-                        className="text-pink-200 hover:text-pink-400 opacity-0 group-hover:opacity-100 text-lg leading-none flex-shrink-0">&times;</button>
-                    </div>
-                  ))}
-                  {daySlots.length === 0 && (
-                    <div className="px-4 py-3 text-xs text-pink-200 italic">No slots yet</div>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-pink-100 overflow-auto shadow-sm">
-          <div className="min-w-[600px]">
-            <div className="grid border-b border-pink-100" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
-              <div className="bg-pink-50 p-2 border-r border-pink-100" />
-              {DAYS.map(day => (
-                <div key={day} className="bg-pink-50 p-2 text-xs text-pink-700 font-semibold border-r border-pink-100 text-center last:border-r-0">
-                  {day.slice(0,3)}
-                </div>
-              ))}
-            </div>
-            {CALENDAR_HOURS.map(hour => {
-              const label = hour === 12 ? '12 PM' : hour < 12 ? `${hour} AM` : `${hour-12} PM`
-              return (
-                <div key={hour} className="grid border-b border-pink-50 last:border-b-0" style={{ gridTemplateColumns: '60px repeat(7, 1fr)' }}>
-                  <div className="p-2 text-xs text-gray-400 border-r border-pink-50 text-right pr-2">{label}</div>
-                  {DAYS.map(day => {
-                    const daySlots = slots.filter(s => s.day === day && timeToHour(s.time_slot) === hour)
-                    return (
-                      <div key={day} className="p-1 border-r border-pink-50 last:border-r-0 min-h-[36px]">
-                        {daySlots.map(slot => (
-                          <div key={slot.id} className="bg-pink-100 text-pink-700 text-xs rounded px-1.5 py-0.5 mb-0.5 truncate">
-                            {slot.task || '—'}
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setOpenNotesId(openNotesId === slot.id ? null : slot.id)}
+                          className={`p-1 transition-colors ${openNotesId === slot.id ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500'}`}
+                          title="Notes & Checklist"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => deleteSlot(slot.id)}
+                          className="text-pink-200 hover:text-pink-400 text-lg leading-none p-1"
+                        >&times;</button>
                       </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+                    </div>
+                    {openNotesId === slot.id && (
+                      <div className="px-3 pb-2">
+                        <SlotNotesPanel slot={slot} onUpdate={updateSlot} onClose={() => setOpenNotesId(null)} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {daySlots.length === 0 && (
+                  <div className="px-4 py-3 text-xs text-pink-200 italic">No slots yet</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
