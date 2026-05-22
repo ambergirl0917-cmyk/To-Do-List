@@ -10,6 +10,8 @@ interface NotesPanelProps {
 
 export default function NotesPanel({ task, onUpdate, onClose }: NotesPanelProps) {
   const [newItem, setNewItem] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState('')
 
   const checklist: ChecklistItem[] = task.checklist || []
 
@@ -27,6 +29,19 @@ export default function NotesPanel({ task, onUpdate, onClose }: NotesPanelProps)
 
   const deleteItem = (id: string) => {
     onUpdate(task.id, { checklist: checklist.filter(i => i.id !== id) })
+  }
+
+  const startEdit = (item: ChecklistItem) => {
+    setEditingId(item.id)
+    setEditingText(item.text)
+  }
+
+  const saveEdit = () => {
+    if (!editingId) return
+    const updated = checklist.map(i => i.id === editingId ? { ...i, text: editingText } : i)
+    onUpdate(task.id, { checklist: updated })
+    setEditingId(null)
+    setEditingText('')
   }
 
   return (
@@ -51,10 +66,26 @@ export default function NotesPanel({ task, onUpdate, onClose }: NotesPanelProps)
               type="checkbox"
               checked={item.done}
               onChange={() => toggleItem(item.id)}
-              className="accent-pink-500"
+              className="accent-pink-500 flex-shrink-0"
             />
-            <span className={`text-sm flex-1 ${item.done ? 'line-through text-gray-400' : 'text-gray-600'}`}>{item.text}</span>
-            <button onClick={() => deleteItem(item.id)} className="text-pink-200 hover:text-pink-400 opacity-0 group-hover:opacity-100 text-lg leading-none">&times;</button>
+            {editingId === item.id ? (
+              <input
+                value={editingText}
+                onChange={e => setEditingText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingId(null) }}
+                onBlur={saveEdit}
+                autoFocus
+                className="flex-1 text-sm bg-white border border-pink-300 rounded px-2 py-0.5 outline-none"
+              />
+            ) : (
+              <span
+                onDoubleClick={() => startEdit(item)}
+                className={`text-sm flex-1 cursor-text ${item.done ? 'line-through text-gray-400' : 'text-gray-600'}`}
+              >
+                {item.text}
+              </span>
+            )}
+            <button onClick={() => deleteItem(item.id)} className="text-pink-200 hover:text-pink-400 opacity-0 group-hover:opacity-100 text-lg leading-none flex-shrink-0">&times;</button>
           </div>
         ))}
       </div>
