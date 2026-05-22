@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
@@ -32,22 +32,64 @@ const DEFAULT_SECTIONS = [
 export default function SettingsPage({ user }: Props) {
   const [sections, setSections] = useState(DEFAULT_SECTIONS)
   const [saved, setSaved] = useState(false)
+  const [totalWeeks, setTotalWeeks] = useState(3)
+  const [weeksSaved, setWeeksSaved] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(`planner_weeks_${user.id}`)
+    if (stored) setTotalWeeks(parseInt(stored))
+  }, [user.id])
 
   const updateName = (id: string, name: string) => {
     setSections(prev => prev.map(s => s.id === id ? { ...s, name } : s))
   }
 
   const handleSave = () => {
-    // In a full implementation this would save to Supabase
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const addWeek = () => {
+    const newTotal = totalWeeks + 1
+    setTotalWeeks(newTotal)
+    localStorage.setItem(`planner_weeks_${user.id}`, newTotal.toString())
+    setWeeksSaved(true)
+    setTimeout(() => setWeeksSaved(false), 2000)
+  }
+
+  const removeWeek = () => {
+    if (totalWeeks <= 1) return
+    const newTotal = totalWeeks - 1
+    setTotalWeeks(newTotal)
+    localStorage.setItem(`planner_weeks_${user.id}`, newTotal.toString())
+    setWeeksSaved(true)
+    setTimeout(() => setWeeksSaved(false), 2000)
   }
 
   return (
     <div className="max-w-2xl">
       <h2 className="text-lg font-bold text-pink-700 mb-4">Settings</h2>
 
-      <div className="bg-white rounded-xl border border-pink-100 overflow-hidden shadow-sm mb-6">
+      {/* Weekly Planner Weeks */}
+      <div className="bg-white rounded-xl border border-pink-100 shadow-sm mb-6">
+        <div className="bg-pink-50 px-4 py-3 border-b border-pink-100">
+          <h3 className="text-sm font-semibold text-pink-700">Weekly Planner</h3>
+          <p className="text-xs text-pink-400 mt-0.5">Add or remove weeks from your planner</p>
+        </div>
+        <div className="px-4 py-4">
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">Current weeks: <span className="font-semibold text-pink-600">{totalWeeks}</span></span>
+            <button onClick={addWeek} className="text-xs bg-pink-500 text-white px-3 py-1.5 rounded-lg hover:bg-pink-600 transition-colors">+ Add Week</button>
+            {totalWeeks > 1 && (
+              <button onClick={removeWeek} className="text-xs border border-pink-200 text-pink-500 px-3 py-1.5 rounded-lg hover:bg-pink-50 transition-colors">− Remove Week</button>
+            )}
+            {weeksSaved && <span className="text-xs text-green-500">✓ Saved!</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Rename Sections */}
+      <div className="bg-white rounded-xl border border-pink-100 shadow-sm mb-6">
         <div className="bg-pink-50 px-4 py-3 border-b border-pink-100">
           <h3 className="text-sm font-semibold text-pink-700">Rename Sections</h3>
           <p className="text-xs text-pink-400 mt-0.5">Change the name of any section to match your subjects</p>
@@ -71,7 +113,8 @@ export default function SettingsPage({ user }: Props) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-pink-100 overflow-hidden shadow-sm">
+      {/* Account */}
+      <div className="bg-white rounded-xl border border-pink-100 shadow-sm">
         <div className="bg-pink-50 px-4 py-3 border-b border-pink-100">
           <h3 className="text-sm font-semibold text-pink-700">Account</h3>
         </div>
