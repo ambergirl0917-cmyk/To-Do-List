@@ -136,12 +136,12 @@ function TimeInput({ value, onChange }: { value: string; onChange: (v: string) =
 
 export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }: Props) {
   const [slots, setSlots] = useState<WeeklySlot[]>([])
-  const [weekNotes, setWeekNotes] = useState<Record<string, string>>({})
-  const [totalWeeks, setTotalWeeks] = useState(initialWeeks)
+  const [dayNotes, setDayNotes] = useState<Record<string, string>>({})
   const [activeWeek, setActiveWeek] = useState(1)
   const [openNotesId, setOpenNotesId] = useState<string | null>(null)
+  const totalWeeks = initialWeeks
 
-  useEffect(() => { fetchSlots() }, [user])
+  useEffect(() => { fetchSlots(); fetchDayNotes() }, [user])
 
   const fetchSlots = async () => {
     const { data } = await supabase
@@ -149,6 +149,31 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
       .eq('user_id', user.id)
       .order('position', { ascending: true })
     if (data) setSlots(data)
+  }
+
+  const fetchDayNotes = async () => {
+    const { data } = await supabase
+      .from('weekly_day_notes')
+      .select('*')
+      .eq('user_id', user.id)
+    if (data) {
+      const map: Record<string, string> = {}
+      data.forEach(row => {
+        map[`${row.week_number}-${row.day}`] = row.notes
+      })
+      setDayNotes(map)
+    }
+  }
+
+  const updateDayNote = async (week: number, day: string, notes: string) => {
+    const key = `${week}-${day}`
+    setDayNotes(prev => ({ ...prev, [key]: notes }))
+    await supabase.from('weekly_day_notes').upsert({
+      user_id: user.id,
+      week_number: week,
+      day,
+      notes
+    }, { onConflict: 'user_id,week_number,day' })
   }
 
   const addSlot = async (day: string, week: number) => {
@@ -215,11 +240,11 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
 
           return (
             <div key={day} className="bg-white rounded-xl border border-pink-100 shadow-sm">
-              {/* Day note */}
+              {/* Day note — saved to Supabase */}
               <div className="px-4 pt-3 pb-2 border-b border-pink-50">
                 <input
-                  value={weekNotes[noteKey] || ''}
-                  onChange={e => setWeekNotes(prev => ({ ...prev, [noteKey]: e.target.value }))}
+                  value={dayNotes[noteKey] || ''}
+                  onChange={e => updateDayNote(activeWeek, day, e.target.value)}
                   placeholder={`Notes for ${day}...`}
                   className="w-full text-xs text-gray-500 bg-pink-50/50 border border-pink-100 rounded-lg px-3 py-1.5 outline-none focus:border-pink-300"
                 />
