@@ -240,7 +240,6 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
 
           return (
             <div key={day} className="bg-white rounded-xl border border-pink-100 shadow-sm">
-              {/* Day note — saved to Supabase */}
               <div className="px-4 pt-3 pb-2 border-b border-pink-50">
                 <input
                   value={dayNotes[noteKey] || ''}
@@ -250,54 +249,68 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
                 />
               </div>
 
-              {/* Day header */}
               <div className="bg-pink-50 px-4 py-2.5 flex items-center justify-between">
                 <span className="text-sm font-semibold text-pink-700">{day}</span>
                 <button onClick={() => addSlot(day, activeWeek)} className="text-xs bg-pink-500 text-white px-2.5 py-1 rounded-lg hover:bg-pink-600 transition-colors">+ Add</button>
               </div>
 
-              {/* Slots */}
               <div className="divide-y divide-pink-50">
-                {daySlots.map(slot => (
-                  <div key={slot.id}>
-                    <div className="flex items-center gap-2 px-3 py-2 group">
-                      <TimeInput value={slot.time_slot} onChange={v => updateSlot(slot.id, { time_slot: v })} />
-                      <input
-                        value={slot.task}
-                        onChange={e => updateSlot(slot.id, { task: e.target.value })}
-                        placeholder="Task..."
-                        className="flex-1 text-sm text-gray-700 bg-transparent outline-none min-w-0"
-                      />
-                      <select
-                        value={slot.progress}
-                        onChange={e => updateSlot(slot.id, { progress: e.target.value as Progress })}
-                        className={`text-xs px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 ${getProgressColor(slot.progress)}`}
-                      >
-                        {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setOpenNotesId(openNotesId === slot.id ? null : slot.id)}
-                          className={`p-1 transition-colors ${openNotesId === slot.id ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500'}`}
-                          title="Notes & Checklist"
+                {daySlots.map(slot => {
+                  const isDone = slot.progress === '100%'
+                  return (
+                    <div key={slot.id}>
+                      <div className={`flex items-center gap-2 px-3 py-2 group ${isDone ? 'bg-green-50/50' : ''}`}>
+                        <div className="flex-shrink-0 w-5 flex items-center justify-center">
+                          {isDone ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-green-500">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          ) : (
+                            <div className="w-3.5 h-3.5" />
+                          )}
+                        </div>
+
+                        <TimeInput value={slot.time_slot} onChange={v => updateSlot(slot.id, { time_slot: v })} />
+
+                        <input
+                          value={slot.task}
+                          onChange={e => updateSlot(slot.id, { task: e.target.value })}
+                          placeholder="Task..."
+                          className={`flex-1 text-sm bg-transparent outline-none min-w-0 ${isDone ? 'line-through text-gray-400' : 'text-gray-700'}`}
+                        />
+
+                        <select
+                          value={slot.progress}
+                          onChange={e => updateSlot(slot.id, { progress: e.target.value as Progress })}
+                          className={`text-xs px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 ${getProgressColor(slot.progress)}`}
                         >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => deleteSlot(slot.id)}
-                          className="text-pink-200 hover:text-pink-400 text-lg leading-none p-1"
-                        >&times;</button>
+                          {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setOpenNotesId(openNotesId === slot.id ? null : slot.id)}
+                            className={`p-1 transition-colors ${openNotesId === slot.id ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500'}`}
+                            title="Notes & Checklist"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => deleteSlot(slot.id)}
+                            className="text-pink-200 hover:text-pink-400 text-lg leading-none p-1"
+                          >&times;</button>
+                        </div>
                       </div>
+                      {openNotesId === slot.id && (
+                        <div className="px-3 pb-2">
+                          <SlotNotesPanel slot={slot} onUpdate={updateSlot} onClose={() => setOpenNotesId(null)} />
+                        </div>
+                      )}
                     </div>
-                    {openNotesId === slot.id && (
-                      <div className="px-3 pb-2">
-                        <SlotNotesPanel slot={slot} onUpdate={updateSlot} onClose={() => setOpenNotesId(null)} />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
                 {daySlots.length === 0 && (
                   <div className="px-4 py-3 text-xs text-pink-200 italic">No slots yet</div>
                 )}
