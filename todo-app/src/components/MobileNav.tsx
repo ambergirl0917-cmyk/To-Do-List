@@ -22,44 +22,36 @@ const SMALL_PAGES = [
   { id: 'settings' as PageId, label: 'Settings', icon: '⚙️' },
 ]
 
-export default function MobileNav({ currentPage, onNavigate }: Props) {
-  // Home screen
-  if (currentPage === 'mobile-home' as any) {
-    return (
-      <div className="flex-1 overflow-y-auto bg-pink-50/30 p-5">
-        <h1 className="text-xl font-bold text-pink-700 mb-6 text-center">My To-Do List</h1>
+export default function MobileNav({ onNavigate }: Props) {
+  return (
+    <div className="flex-1 overflow-y-auto bg-pink-50/30 p-5">
+      <h1 className="text-xl font-bold text-pink-700 mb-6 text-center">My To-Do List</h1>
 
-        {/* 8 big icons in 2x4 grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          {MAIN_PAGES.map(page => (
-            <button
-              key={page.id}
-              onClick={() => onNavigate(page.id)}
-              className={`${page.color} border-2 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-sm active:scale-95 transition-transform`}
-            >
-              <span className="text-4xl">{page.icon}</span>
-              <span className="text-sm font-semibold text-gray-700 text-center leading-tight">{page.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 2 small icons */}
-        <div className="grid grid-cols-2 gap-3">
-          {SMALL_PAGES.map(page => (
-            <button
-              key={page.id}
-              onClick={() => onNavigate(page.id)}
-              className="bg-white border border-pink-100 rounded-xl p-3 flex items-center gap-3 shadow-sm active:scale-95 transition-transform"
-            >
-              <span className="text-2xl">{page.icon}</span>
-              <span className="text-sm text-gray-500 font-medium">{page.label}</span>
-            </button>
-          ))}
-        </div>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {MAIN_PAGES.map(page => (
+          <button
+            key={page.id}
+            onClick={() => onNavigate(page.id)}
+            className={`${page.color} border-2 rounded-2xl p-5 flex flex-col items-center gap-3 shadow-sm active:scale-95 transition-transform`}
+          >
+            <span className="text-4xl">{page.icon}</span>
+            <span className="text-sm font-semibold text-gray-700 text-center leading-tight">{page.label}</span>
+          </button>
+        ))}
       </div>
-    )
-  }
 
-  // Inside a page — show back button at top
-  return null
+      <div className="grid grid-cols-2 gap-3">
+        {SMALL_PAGES.map(page => (
+          <button
+            key={page.id}
+            onClick={() => onNavigate(page.id)}
+            className="bg-white border border-pink-100 rounded-xl p-3 flex items-center gap-3 shadow-sm active:scale-95 transition-transform"
+          >
+            <span className="text-2xl">{page.icon}</span>
+            <span className="text-sm text-gray-500 font-medium">{page.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
