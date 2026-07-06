@@ -46,7 +46,7 @@ const PAGE_LABELS: Record<PageId, string> = {
 export default function AppShell({ user }: AppShellProps) {
   const [currentPage, setCurrentPage] = useState<PageId>('overview')
   const [mobileShowHome, setMobileShowHome] = useState(true)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [urgentTasks, setUrgentTasks] = useState<Task[]>([])
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
