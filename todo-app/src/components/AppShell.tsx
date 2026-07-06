@@ -46,6 +46,7 @@ const PAGE_LABELS: Record<PageId, string> = {
 export default function AppShell({ user }: AppShellProps) {
   const [currentPage, setCurrentPage] = useState<PageId>('overview')
   const [mobileShowHome, setMobileShowHome] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [urgentTasks, setUrgentTasks] = useState<Task[]>([])
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
@@ -57,6 +58,12 @@ export default function AppShell({ user }: AppShellProps) {
     fetchUrgentTasks()
     const stored = localStorage.getItem(`planner_weeks_${user.id}`)
     if (stored) setPlannerWeeks(parseInt(stored))
+
+    // Detect mobile
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [user])
 
   const fetchUrgentTasks = async () => {
@@ -101,10 +108,6 @@ export default function AppShell({ user }: AppShellProps) {
     setMobileShowHome(false)
   }
 
-  const handleMobileBack = () => {
-    setMobileShowHome(true)
-  }
-
   const renderPage = () => {
     const props = { user, onTaskChange: fetchUrgentTasks, focusMode, searchQuery }
     switch (currentPage) {
@@ -122,6 +125,46 @@ export default function AppShell({ user }: AppShellProps) {
     }
   }
 
+  // MOBILE LAYOUT
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden">
+        <TopBar
+          user={user}
+          urgentTasks={urgentTasks}
+          upcomingTasks={upcomingTasks}
+          focusMode={focusMode}
+          onToggleFocus={() => setFocusMode(f => !f)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onToggleSidebar={() => {}}
+        />
+        {mobileShowHome ? (
+          <MobileNav currentPage={currentPage} onNavigate={handleNavigate} />
+        ) : (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-pink-100 flex-shrink-0">
+              <button
+                onClick={() => setMobileShowHome(true)}
+                className="flex items-center gap-1.5 text-pink-500 text-sm font-medium"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Home
+              </button>
+              <span className="text-sm font-semibold text-gray-700">{PAGE_LABELS[currentPage]}</span>
+            </div>
+            <main className="flex-1 overflow-y-auto p-4">
+              {renderPage()}
+            </main>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // DESKTOP LAYOUT
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <TopBar
@@ -134,41 +177,9 @@ export default function AppShell({ user }: AppShellProps) {
         onSearchChange={setSearchQuery}
         onToggleSidebar={() => setSidebarOpen(s => !s)}
       />
-
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — hidden on mobile */}
-        <div className="hidden md:block">
-          {sidebarOpen && <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />}
-        </div>
-
-        {/* Mobile layout */}
-        <div className="flex flex-col flex-1 overflow-hidden md:hidden">
-          {mobileShowHome ? (
-            <MobileNav currentPage={currentPage} onNavigate={handleNavigate} />
-          ) : (
-            <>
-              {/* Mobile back button + page title */}
-              <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-pink-100">
-                <button
-                  onClick={handleMobileBack}
-                  className="flex items-center gap-1.5 text-pink-500 text-sm font-medium"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="15 18 9 12 15 6"/>
-                  </svg>
-                  Home
-                </button>
-                <span className="text-sm font-semibold text-gray-700">{PAGE_LABELS[currentPage]}</span>
-              </div>
-              <main className="flex-1 overflow-y-auto p-4">
-                {renderPage()}
-              </main>
-            </>
-          )}
-        </div>
-
-        {/* Desktop main content */}
-        <main className="hidden md:block flex-1 overflow-y-auto p-4 md:p-6">
+        {sidebarOpen && <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {renderPage()}
         </main>
       </div>
