@@ -62,6 +62,8 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
   const isUrgent = days !== null && days >= 0 && days <= reminderThreshold
   const rowBg = isUrgent ? 'bg-red-50 border-l-2 border-red-300' : ''
 
+  const hasNotes = !!(task.notes || (task.checklist && task.checklist.length > 0))
+
   const handleCheck = () => { onArchive(task.id) }
 
   if (isMobile) {
@@ -72,7 +74,6 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
           style={style}
           className={`px-3 py-3 border-b border-pink-50 ${rowBg}`}
         >
-          {/* Top row: check + task name */}
           <div className="flex items-center gap-3 mb-2">
             <button
               onClick={handleCheck}
@@ -86,7 +87,6 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
             />
           </div>
 
-          {/* Bottom row: date + showsAs + progress + actions */}
           <div className="flex items-center gap-2 pl-9">
             <input
               type="date"
@@ -108,7 +108,7 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
             <div className="flex items-center gap-2 ml-auto">
               <button
                 onClick={() => setShowNotes(s => !s)}
-                className={`p-1.5 rounded-lg transition-colors ${showNotes || task.notes || (task.checklist && task.checklist.length > 0) ? 'text-pink-500' : 'text-pink-300'}`}
+                className={`p-1.5 rounded-lg transition-colors ${hasNotes ? 'text-pink-500' : 'text-pink-300'}`}
                 title="Notes"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -189,11 +189,11 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
           {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <div className="relative">
             <button
               onClick={() => setShowReminder(s => !s)}
-              className={`p-1 transition-colors ${task.reminder_days != null ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500'}`}
+              className={`p-1 transition-colors ${task.reminder_days != null ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500 opacity-0 group-hover:opacity-100'}`}
               title={task.reminder_days != null ? `Remind ${task.reminder_days} days before` : 'Set reminder'}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -229,7 +229,7 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
 
           <button
             onClick={() => setShowNotes(s => !s)}
-            className={`p-1 transition-colors ${task.notes || (task.checklist && task.checklist.length > 0) ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500'}`}
+            className={`p-1 transition-colors ${hasNotes ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500 opacity-0 group-hover:opacity-100'}`}
             title="Notes"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -238,7 +238,7 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
           </button>
 
           <div className="relative">
-            <button onClick={() => setShowMove(s => !s)} className="text-pink-300 hover:text-pink-500 p-1" title="Move to...">
+            <button onClick={() => setShowMove(s => !s)} className="text-pink-300 hover:text-pink-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Move to...">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
               </svg>
