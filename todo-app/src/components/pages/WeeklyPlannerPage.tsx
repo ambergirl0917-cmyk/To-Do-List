@@ -139,6 +139,10 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
   const [dayNotes, setDayNotes] = useState<Record<string, string>>({})
   const [activeWeek, setActiveWeek] = useState(1)
   const [openNotesId, setOpenNotesId] = useState<string | null>(null)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showMoveMenu, setShowMoveMenu] = useState<string | null>(null)
+  const [deletedSlots, setDeletedSlots] = useState<WeeklySlot[]>([])
+  const [showUndo, setShowUndo] = useState(false)
   const totalWeeks = initialWeeks
 
   useEffect(() => { fetchSlots(); fetchDayNotes() }, [user])
@@ -169,10 +173,7 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
     const key = `${week}-${day}`
     setDayNotes(prev => ({ ...prev, [key]: notes }))
     await supabase.from('weekly_day_notes').upsert({
-      user_id: user.id,
-      week_number: week,
-      day,
-      notes
+      user_id: user.id, week_number: week, day, notes
     }, { onConflict: 'user_id,week_number,day' })
   }
 
@@ -191,8 +192,52 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
   }
 
   const deleteSlot = async (id: string) => {
+    const slot = slots.find(s => s.id === id)
+    if (slot) {
+      setDeletedSlots([slot])
+      setShowUndo(true)
+      setTimeout(() => setShowUndo(false), 5000)
+    }
     setSlots(prev => prev.filter(s => s.id !== id))
     await supabase.from('weekly_slots').delete().eq('id', id)
+  }
+
+  const undoDelete = async () => {
+    if (deletedSlots.length === 0) return
+    const slot = deletedSlots[0]
+    const { data } = await supabase.from('weekly_slots').insert({
+      user_id: slot.user_id, day: slot.day, time_slot: slot.time_slot,
+      task: slot.task, notes: slot.notes, progress: slot.progress,
+      position: slot.position, week_number: slot.week_number, checklist: slot.checklist
+    }).select().single()
+    if (data) setSlots(prev => [...prev, data])
+    setDeletedSlots([])
+    setShowUndo(false)
+  }
+
+  const moveSlot = async (id: string, newDay: string, newWeek: number) => {
+    setSlots(prev => prev.map(s => s.id === id ? { ...s, day: newDay, week_number: newWeek } : s))
+    await supabase.from('weekly_slots').update({ day: newDay, week_number: newWeek }).eq('id', id)
+    setShowMoveMenu(null)
+  }
+
+  const resetWeek = async () => {
+    const weekSlotIds = slots.filter(s => (s.week_number ?? 1) === activeWeek).map(s => s.id)
+    setSlots(prev => prev.filter(s => (s.week_number ?? 1) !== activeWeek))
+    for (const id of weekSlotIds) {
+      await supabase.from('weekly_slots').delete().eq('id', id)
+    }
+    // Clear day notes for this week
+    for (const day of DAYS) {
+      const key = `${activeWeek}-${day}`
+      setDayNotes(prev => { const n = { ...prev }; delete n[key]; return n })
+      await supabase.from('weekly_day_notes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('week_number', activeWeek)
+        .eq('day', day)
+    }
+    setShowResetConfirm(false)
   }
 
   const timeToMinutes = (t: string): number => {
@@ -211,9 +256,17 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
 
   return (
     <div>
+      {/* Undo toast */}
+      {showUndo && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2.5 rounded-xl flex items-center gap-3 z-50 shadow-lg">
+          <span>Slot deleted</span>
+          <button onClick={undoDelete} className="text-pink-300 font-semibold hover:text-pink-200">Undo</button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-pink-700">Weekly Planner</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
             <button
               key={w}
@@ -223,6 +276,21 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
               Week {w}
             </button>
           ))}
+          {/* Reset button */}
+          {!showResetConfirm ? (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors"
+            >
+              Reset week
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-red-500">Sure?</span>
+              <button onClick={resetWeek} className="text-xs px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600">Yes</button>
+              <button onClick={() => setShowResetConfirm(false)} className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200">No</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -297,6 +365,37 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                             </svg>
                           </button>
+
+                          {/* Move to another day/week */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setShowMoveMenu(showMoveMenu === slot.id ? null : slot.id)}
+                              className="text-pink-300 hover:text-pink-500 p-1"
+                              title="Move to..."
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
+                              </svg>
+                            </button>
+                            {showMoveMenu === slot.id && (
+                              <div className="absolute right-0 top-6 bg-white rounded-xl shadow-xl border border-pink-100 w-48 z-50 max-h-64 overflow-y-auto">
+                                <p className="text-xs font-semibold text-pink-500 px-3 pt-2 pb-1">Move to...</p>
+                                {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+                                  <div key={w}>
+                                    <p className="text-xs text-pink-300 px-3 py-1 bg-pink-50">Week {w}</p>
+                                    {DAYS.filter(d => !(d === day && w === activeWeek)).map(d => (
+                                      <button
+                                        key={d}
+                                        onClick={() => moveSlot(slot.id, d, w)}
+                                        className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-pink-50 transition-colors"
+                                      >{d}</button>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
                           <button
                             onClick={() => deleteSlot(slot.id)}
                             className="text-pink-200 hover:text-pink-400 text-lg leading-none p-1"
