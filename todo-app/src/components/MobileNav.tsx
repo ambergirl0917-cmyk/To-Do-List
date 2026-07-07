@@ -1,11 +1,9 @@
 'use client'
 import { PageId } from './AppShell'
-
 interface Props {
   currentPage: PageId
   onNavigate: (page: PageId) => void
 }
-
 const MAIN_PAGES = [
   { id: 'overview' as PageId, label: "Today's & ASAP", icon: 'ti-calendar-check', bg: '#f59cb2', fg: '#c4607a' },
   { id: 'subjects' as PageId, label: 'IB Subjects', icon: 'ti-books', bg: '#e9b4b3', fg: '#b07878' },
@@ -16,12 +14,10 @@ const MAIN_PAGES = [
   { id: 'planner' as PageId, label: 'Weekly Planner', icon: 'ti-layout-list', bg: '#d5708b', fg: '#a03860' },
   { id: 'deadlines' as PageId, label: 'Deadlines', icon: 'ti-bell', bg: '#f59cb2', fg: '#c4607a' },
 ]
-
 const SMALL_PAGES = [
   { id: 'archive' as PageId, label: 'Archive', icon: 'ti-archive', bg: '#eeceb6', fg: '#a88060' },
   { id: 'settings' as PageId, label: 'Settings', icon: 'ti-settings', bg: '#f2dcbe', fg: '#b89870' },
 ]
-
 export default function MobileNav({ onNavigate }: Props) {
   return (
     <>
@@ -44,6 +40,16 @@ export default function MobileNav({ onNavigate }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Summer Plan — wide button */}
+        <button
+          onClick={() => onNavigate('summer')}
+          style={{ background: '#f9d8e4', borderRadius: '16px' }}
+          className="w-full p-4 flex items-center justify-center gap-3 mb-4 active:scale-95 transition-transform"
+        >
+          <i className="ti ti-sun" style={{ fontSize: '24px', color: '#c4607a' }} />
+          <span style={{ fontSize: '14px', color: '#c4607a', fontWeight: '600' }}>Summer Plan 🌸</span>
+        </button>
 
         <div className="grid grid-cols-2 gap-3">
           {SMALL_PAGES.map(page => (
