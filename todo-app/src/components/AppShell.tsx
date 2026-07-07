@@ -1,4 +1,3 @@
-import SummerPlanPage from './pages/SummerPlanPage'
 'use client'
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
@@ -16,9 +15,10 @@ import WeeklyPlannerPage from './pages/WeeklyPlannerPage'
 import DeadlinesPage from './pages/DeadlinesPage'
 import ArchivePage from './pages/ArchivePage'
 import SettingsPage from './pages/SettingsPage'
+import SummerPlanPage from './pages/SummerPlanPage'
 import { Task } from '@/lib/types'
 
-export type PageId = 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings'
+export type PageId = 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings' | 'summer'
 
 interface AppShellProps { user: User }
 
@@ -42,6 +42,7 @@ const PAGE_LABELS: Record<PageId, string> = {
   deadlines: 'Deadlines',
   archive: 'Archive',
   settings: 'Settings',
+  summer: 'Summer Plan',
 }
 
 export default function AppShell({ user }: AppShellProps) {
@@ -59,8 +60,6 @@ export default function AppShell({ user }: AppShellProps) {
     fetchUrgentTasks()
     const stored = localStorage.getItem(`planner_weeks_${user.id}`)
     if (stored) setPlannerWeeks(parseInt(stored))
-
-    // Detect mobile
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
     window.addEventListener('resize', checkMobile)
@@ -70,7 +69,6 @@ export default function AppShell({ user }: AppShellProps) {
   const fetchUrgentTasks = async () => {
     const todayStr = localDateStr(0)
     const in14DaysStr = localDateStr(14)
-
     const { data } = await supabase
       .from('tasks')
       .select('*')
@@ -82,7 +80,6 @@ export default function AppShell({ user }: AppShellProps) {
       .lte('due_date', in14DaysStr)
       .order('due_date', { ascending: true })
       .limit(20)
-
     if (data) {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
@@ -93,11 +90,8 @@ export default function AppShell({ user }: AppShellProps) {
         const dueDate = new Date(y, m - 1, d)
         const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
         const threshold = task.reminder_days ?? 2
-        if (diffDays <= threshold) {
-          urgent.push(task)
-        } else if (upcoming.length < 5) {
-          upcoming.push(task)
-        }
+        if (diffDays <= threshold) urgent.push(task)
+        else if (upcoming.length < 5) upcoming.push(task)
       }
       setUrgentTasks(urgent)
       setUpcomingTasks(upcoming)
@@ -122,11 +116,11 @@ export default function AppShell({ user }: AppShellProps) {
       case 'deadlines': return <DeadlinesPage user={user} />
       case 'archive': return <ArchivePage user={user} />
       case 'settings': return <SettingsPage user={user} />
+      case 'summer': return <SummerPlanPage user={user} />
       default: return <OverviewPage {...props} />
     }
   }
 
-  // MOBILE LAYOUT
   if (isMobile) {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
@@ -165,7 +159,6 @@ export default function AppShell({ user }: AppShellProps) {
     )
   }
 
-  // DESKTOP LAYOUT
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <TopBar
