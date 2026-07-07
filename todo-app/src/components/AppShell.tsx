@@ -1,3 +1,4 @@
+import SummerPlanPage from './pages/SummerPlanPage'
 'use client'
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
