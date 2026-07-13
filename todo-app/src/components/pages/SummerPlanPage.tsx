@@ -58,18 +58,20 @@ function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
     })
   }
 
-  // Tracking counters
-  let rwDone = 105 // done up to Q105
+  // Progress trackers
+  let rwDone = 105
   let challengeRWDone = 0
-  let hardMathDone = 26 // starting Q27
+  let hardMathDone = 26
   let challengeMathDone = 0
-  let pandaChapter = 4 // done ch2,3
+  let pandaChapter = 4
   let vocabSetToLearn = 14
   let prepProsDone = 0
   let bioIndex = 0
   let econIndex = 0
   let mathReviewIndex = 0
-  let bragSheetHours = 0
+  let bragSheetSessions = 0
+  let englishPaper1Done = 0
+  let lastPracticeTestDay = -10
 
   const bioUnits = [
     'A2.2 Cell Structure', 'B2.1 Membranes and Transport', 'B1.2 Protein',
@@ -90,60 +92,32 @@ function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
     { title: 'Math: Rewrite Paper 2 (timed)', duration: 120 },
   ]
 
-  // Vocab schedule - learn sets 14-30 flexibly, review 4-5 sets/day
-  const vocabLearnDays = ['2026-07-14','2026-07-15','2026-07-16','2026-07-17','2026-07-18',
-    '2026-07-19','2026-07-21','2026-07-22','2026-07-23','2026-07-24','2026-07-25',
-    '2026-07-26','2026-07-28','2026-07-29','2026-07-30','2026-07-31','2026-08-01']
-
-  const vocabReviewSets: Record<string, number[]> = {
-    '2026-07-14': [1,2,3,4,5],
-    '2026-07-15': [6,7,8,9,10],
-    '2026-07-16': [11,12,13,1,2],
-    '2026-07-17': [3,4,5,6,7],
-    '2026-07-18': [8,9,10,11,12],
-    '2026-07-19': [13,14,15,1,2],
-    '2026-07-21': [3,4,5,6,14],
-    '2026-07-22': [7,8,9,15,16],
-    '2026-07-23': [10,11,12,17,18],
-    '2026-07-24': [1,2,3,19,20],
-    '2026-07-25': [4,5,6,21,22],
-    '2026-07-26': [13,14,15,23,24],
-    '2026-07-28': [1,5,10,15,20],
-    '2026-07-29': [2,6,11,16,21],
-    '2026-07-30': [3,7,12,17,22],
-    '2026-07-31': [4,8,13,18,23],
-    '2026-08-01': [9,14,19,24,25],
-  }
-
-  // After Aug 1, pure review cycling through all 30 sets
-  const generateLateVocabReview = (dateStr: string): number[] => {
-    const d = new Date(dateStr)
-    const dayNum = Math.floor((d.getTime() - new Date('2026-08-01').getTime()) / 86400000)
-    const sets = []
+  // Vocab review sets cycling
+  const getVocabReview = (dayNum: number, learnedUpTo: number): number[] => {
+    const available = Math.min(learnedUpTo, 30)
+    if (available === 0) return [1,2,3,4,5]
+    const sets: number[] = []
     for (let i = 0; i < 5; i++) {
-      sets.push(((dayNum * 5 + i) % 30) + 1)
+      sets.push(((dayNum * 3 + i * 7) % available) + 1)
     }
-    return sets
+    return [...new Set(sets)].slice(0, 5)
   }
 
-  // TODAY Jul 13 - special day (counseling + essay class + lirae)
+  // TODAY Jul 13
   add('2026-07-13', 'Essay class + prep work', 'college', 150)
   add('2026-07-13', 'Lirae', 'personal', 90)
 
-  const start = new Date('2026-07-14')
-  const end = new Date('2026-08-31')
-  const satDay = new Date('2026-08-22')
+  const startDate = new Date('2026-07-14')
+  const endDate = new Date('2026-08-31')
+  const satDate = new Date('2026-08-22')
   const postSATStart = new Date('2026-08-23')
   const aug1 = new Date('2026-08-01')
   const collegeResearchEnd = new Date('2026-07-21')
   const bragSheetStart = new Date('2026-07-18')
 
-  // SAT rotation tracking
-  let satRotation = 0 // cycles through different SAT task combos
-
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
     const ds = d.toISOString().split('T')[0]
-    const dow = d.getDay() // 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+    const dow = d.getDay()
     const isSun = dow === 0
     const isMon = dow === 1
     const isTue = dow === 2
@@ -151,97 +125,163 @@ function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
     const isThu = dow === 4
     const isFri = dow === 5
     const isSat = dow === 6
-    const isClassDay = isMon || isThu || isTue || isFri
     const isMathClass = isMon || isThu
     const isEngClass = isTue || isFri
-    const isBeforeSAT = d < satDay
+    const isBeforeSAT = d < satDate
     const isSATDay = ds === '2026-08-22'
     const isPostSAT = d >= postSATStart
-    const isThisWeek = d <= new Date('2026-07-19')
+    const isThisWeek = d <= new Date('2026-07-20')
     const isAfterAug1 = d >= aug1
-    const dayNum = Math.floor((d.getTime() - start.getTime()) / 86400000)
+    const dayNum = Math.floor((d.getTime() - startDate.getTime()) / 86400000)
 
     if (isSATDay) continue
 
-    // ===== POST SAT (Aug 23-31) =====
+    // ===== POST SAT =====
     if (isPostSAT) {
-      if (isSun) {
-        add(ds, 'Rest & catch up', 'other', 120)
-        continue
-      }
+      if (isSun) { add(ds, 'Rest & catch up', 'other', 60); continue }
       add(ds, 'English IO: Draft & Research', 'ibcore', 120)
       add(ds, 'Chinese IO: Draft & Research', 'ibcore', 120)
       add(ds, 'EE: Writing session', 'ibcore', 90)
       add(ds, 'Supplemental Essays', 'college', 120)
       add(ds, 'Lirae', 'personal', 60)
       add(ds, 'IA Work: Working session', 'ibcore', 60)
-      if (isTue || isFri) {
-        if (bioIndex < bioUnits.length) { add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90); bioIndex++ }
+      continue
+    }
+
+    // ===== SUNDAY =====
+    if (isSun) {
+      // Light day — 20 RW drills + vocab review + school catch up
+      if (rwDone < 1492) {
+        add(ds, 'RW Drills: 20 questions', 'sat', 60, [], 'quantity', 20)
+        rwDone += 20
+      }
+      const reviewSets = getVocabReview(dayNum, vocabSetToLearn - 1)
+      add(ds, `Vocab: Review Sets ${reviewSets.join(', ')}`, 'sat', reviewSets.length * 5,
+        reviewSets.map(n => ({ id: n.toString(), text: `Set ${n}`, done: false })))
+
+      // Panda occasionally on Sunday (1 chapter)
+      if (pandaChapter <= 27 && dayNum % 3 === 0) {
+        add(ds, `Panda Book: Chapter ${pandaChapter}`, 'sat', 60)
+        pandaChapter++
+      }
+
+      // Light school stuff
+      if (bioIndex < bioUnits.length && dayNum % 2 === 0) {
+        add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90)
+        bioIndex++
+      }
+      add(ds, 'EE: Research & Planning', 'ibcore', 45)
+      add(ds, 'Rest & catch up', 'other', 60)
+      continue
+    }
+
+    // ===== SATURDAY =====
+    if (isSat) {
+      // School stuff day
+      if (bioIndex < bioUnits.length) {
+        add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90)
+        bioIndex++
+      }
+      if (econIndex < econUnits.length) {
+        add(ds, econUnits[econIndex].title, 'subject', econUnits[econIndex].duration)
+        econIndex++
+      } else if (mathReviewIndex < mathReview.length) {
+        add(ds, mathReview[mathReviewIndex].title, 'subject', mathReview[mathReviewIndex].duration)
+        mathReviewIndex++
+      }
+      // English Paper 1 every 2 weeks
+      if (dayNum % 14 < 2) {
+        add(ds, 'English Paper 1: Practice writing (1hr)', 'sat', 60)
+        englishPaper1Done++
+      }
+      // Brag sheet
+      if (d >= bragSheetStart && bragSheetSessions < 4) {
+        add(ds, 'Brag Sheet: Research & writing', 'college', 105)
+        bragSheetSessions++
+      }
+      // EE
+      add(ds, 'EE: Research & Writing', 'ibcore', 60)
+      // Light RW drills
+      if (rwDone < 1492) {
+        add(ds, 'RW Drills: 20 questions', 'sat', 60, [], 'quantity', 20)
+        rwDone += 20
       }
       continue
     }
 
-    // ===== SUNDAY - rest & catch up =====
-    if (isSun) {
-      add(ds, 'RW Drills: 35 questions', 'sat', 105, [], 'quantity', 35); rwDone += 35
-      const reviewSets = vocabReviewSets[ds] || generateLateVocabReview(ds)
-      add(ds, `Vocab: Review Sets ${reviewSets.join(', ')}`, 'sat', reviewSets.length * 5,
-        reviewSets.map(n => ({ id: n.toString(), text: `Set ${n}`, done: false })))
-      add(ds, 'Rest & catch up', 'other', 120)
-      continue
+    // ===== WEEKDAYS (Mon-Fri) =====
+    let satMins = 0
+
+    // SAT Classes
+    if (isMathClass) {
+      add(ds, 'Math SAT Class (10:00–11:30am)', 'sat', 90)
+    }
+    if (isEngClass) {
+      add(ds, 'English SAT Class (2:20–3:50pm)', 'sat', 90)
+      add(ds, 'Teacher HW: Practice Test Module 1', 'sat', 45)
+      satMins += 45
     }
 
-    // ===== SAT BLOCK =====
-    // Class blocks
-    if (isMathClass) add(ds, 'Math SAT Class (10:00–11:30am)', 'sat', 90)
-    if (isEngClass) add(ds, 'English SAT Class (2:20–3:50pm)', 'sat', 90)
-    if (isEngClass) add(ds, 'Teacher HW: Practice Test Module 1 (45min)', 'sat', 45)
-
-    // Math homework before class
-    if (isMathClass && pandaChapter <= 27) {
-      add(ds, `Panda Book: Chapters ${pandaChapter}–${pandaChapter + 2}`, 'sat', 180)
-      pandaChapter += 3
-    }
+    // Hard math before Mon/Thu class (do it before 10am)
     if (isMathClass && hardMathDone < 150) {
-      add(ds, `PrepPros Hard Math: 8 questions (hw)`, 'sat', 56, [], 'quantity', 8)
+      add(ds, `PrepPros Hard Math: 8 questions (before class)`, 'sat', 56, [], 'quantity', 8)
       hardMathDone += 8
+      satMins += 56
     }
 
-    // English-heavy SAT rotation — more English than math
-    const rotation = satRotation % 7
+    // Panda — flexible, 1-2 chapters on Wed/Fri/Mon/Thu
+    if ((isWed || isFri || isMathClass) && pandaChapter <= 27) {
+      const chapters = (isWed || isFri) ? 2 : 1
+      const actualChapters = Math.min(chapters, 28 - pandaChapter)
+      if (actualChapters > 0) {
+        add(ds, actualChapters > 1
+          ? `Panda Book: Chapters ${pandaChapter} & ${pandaChapter + 1}`
+          : `Panda Book: Chapter ${pandaChapter}`,
+          'sat', actualChapters * 60)
+        satMins += actualChapters * 60
+        pandaChapter += actualChapters
+      }
+    }
+
+    // RW Drills (every weekday — most important)
     if (rwDone < 1492) {
-      add(ds, 'RW Drills: 35 questions', 'sat', 105, [], 'quantity', 35); rwDone += 35
+      add(ds, 'RW Drills: 35 questions', 'sat', 105, [], 'quantity', 35)
+      rwDone += 35
+      satMins += 105
     }
 
-    // Vocab - learn new set on learn days, always review
-    if (vocabLearnDays.includes(ds) && vocabSetToLearn <= 30) {
-      add(ds, `Vocab: Learn Set ${vocabSetToLearn} (new)`, 'sat', 40); vocabSetToLearn++
+    // Vocab
+    if (vocabSetToLearn <= 30 && dayNum % 2 === 0) {
+      add(ds, `Vocab: Learn Set ${vocabSetToLearn} (new)`, 'sat', 40)
+      vocabSetToLearn++
+      satMins += 40
     }
-    const reviewSets = vocabReviewSets[ds] || generateLateVocabReview(ds)
+    const reviewSets = getVocabReview(dayNum, vocabSetToLearn - 1)
     add(ds, `Vocab: Review Sets ${reviewSets.join(', ')}`, 'sat', reviewSets.length * 5,
       reviewSets.map(n => ({ id: n.toString(), text: `Set ${n}`, done: false })))
+    satMins += reviewSets.length * 5
 
-    // Challenge RW (English — most days)
-    if (challengeRWDone < 277 && rotation !== 6) {
-      add(ds, 'Challenge RW: 6 questions', 'sat', 36, [], 'quantity', 6); challengeRWDone += 6
+    // Challenge RW — most days but skip heavy days
+    if (challengeRWDone < 277 && satMins < 300) {
+      add(ds, 'Challenge RW: 6 questions', 'sat', 36, [], 'quantity', 6)
+      challengeRWDone += 6
+      satMins += 36
     }
 
-    // English Paper 1 (twice a week - Wed & Sat... but Sat is subject study so Wed & Fri)
-    if (isWed || isFri) {
-      add(ds, 'English Paper 1: Practice writing', 'sat', 60)
+    // Challenge Math — 3x/week (Mon, Wed, Fri) — lighter since English is priority
+    if (challengeMathDone < 75 && (isMon || isWed || isFri) && satMins < 300) {
+      add(ds, 'OnePrep Challenge Math: 5 questions', 'sat', 35, [], 'quantity', 5)
+      challengeMathDone += 5
+      satMins += 35
     }
 
-    // Practice tests (every 5 days, not on class days)
-    if (prepProsDone < 10 && dayNum % 5 === 0 && !isClassDay) {
-      add(ds, `PrepPros Practice Test #${prepProsDone + 1} — RW Module`, 'sat', 90); prepProsDone++
+    // Practice test every 5 days on lighter days
+    if (prepProsDone < 10 && dayNum - lastPracticeTestDay >= 5 && !isMathClass && satMins < 270) {
+      add(ds, `PrepPros Practice Test #${prepProsDone + 1} — RW Module`, 'sat', 90)
+      prepProsDone++
+      lastPracticeTestDay = dayNum
+      satMins += 90
     }
-
-    // Challenge Math (3x/week - lighter since English is priority)
-    if (challengeMathDone < 75 && (isMon || isWed || isFri)) {
-      add(ds, 'OnePrep Challenge Math: 5 questions', 'sat', 35, [], 'quantity', 5); challengeMathDone += 5
-    }
-
-    satRotation++
 
     // ===== NON-SAT BLOCK (2hrs) =====
     if (isThisWeek) {
@@ -250,18 +290,17 @@ function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
         add(ds, 'Lirae', 'personal', 120)
       } else if (isThu || isFri) {
         add(ds, 'Competition: NYT Writing Contest', 'personal', 120)
-      } else if (isSat) {
-        if (bragSheetHours < 7 && d >= bragSheetStart) {
-          add(ds, 'Brag Sheet: Research & writing', 'college', 120); bragSheetHours += 2
-        } else if (bioIndex < bioUnits.length) {
-          add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90); bioIndex++
-        }
-        if (econIndex < econUnits.length) {
-          add(ds, econUnits[econIndex].title, 'subject', econUnits[econIndex].duration); econIndex++
-        }
+      }
+      // College research first 2 weeks
+      if (d <= collegeResearchEnd) {
+        add(ds, 'College Research', 'college', 60)
+      }
+      // BM IA sprinkled early this week
+      if (isTue || isWed || isThu) {
+        add(ds, 'BM IA: Work session', 'ibcore', 60)
       }
     } else {
-      // Normal rotation from next week
+      // Normal rotation
       if (isMon) {
         add(ds, 'Lirae', 'personal', 120)
       } else if (isTue) {
@@ -277,41 +316,21 @@ function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
         } else {
           add(ds, 'Supplemental Essays', 'college', 120)
         }
-        // College research first 2 weeks
-        if (d <= collegeResearchEnd) {
-          add(ds, 'College Research', 'college', 60)
-        }
-      } else if (isSat) {
-        // Subject study rotation
-        if (bioIndex < bioUnits.length) {
-          add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90); bioIndex++
-        }
-        if (econIndex < econUnits.length) {
-          add(ds, econUnits[econIndex].title, 'subject', econUnits[econIndex].duration); econIndex++
-        } else if (mathReviewIndex < mathReview.length) {
-          add(ds, mathReview[mathReviewIndex].title, 'subject', mathReview[mathReviewIndex].duration); mathReviewIndex++
-        }
-        // Brag sheet end of July
-        if (bragSheetHours < 7 && d >= bragSheetStart) {
-          add(ds, 'Brag Sheet: Research & writing', 'college', 120); bragSheetHours += 2
-        }
-        // EE on Saturdays too
-        add(ds, 'EE: Research & Writing', 'ibcore', 60)
       }
 
-      // IO light blocks (2hrs/week, Wed + one other day)
-      if (isWed && !isThisWeek) {
+      // College research first 2 weeks on Fri
+      if (d <= collegeResearchEnd && isFri) {
+        add(ds, 'College Research', 'college', 60)
+      }
+
+      // IO light blocks Wed (2hrs/week total)
+      if (isWed) {
         add(ds, 'IO: Working session', 'ibcore', 60)
       }
 
-      // Common App activities sheet (one time)
+      // Common App activities sheet one time
       if (ds === '2026-07-22') {
-        add(ds, 'Common App: Activities Google Sheet (1hr)', 'college', 60)
-      }
-
-      // BM IA - sprinkle this week on lighter days
-      if (ds === '2026-07-14' || ds === '2026-07-15' || ds === '2026-07-16') {
-        add(ds, 'BM IA: Work session', 'ibcore', 60)
+        add(ds, 'Common App: Activities Google Sheet', 'college', 60)
       }
     }
   }
@@ -319,7 +338,6 @@ function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
   return blocks
 }
 
-// ============ MODALS ============
 function BlockEditModal({ block, onSave, onClose, onDelete }: {
   block: SummerBlock
   onSave: (updates: Partial<SummerBlock>) => void
@@ -344,7 +362,7 @@ function BlockEditModal({ block, onSave, onClose, onDelete }: {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-gray-700">Edit Block</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          <button onClick={onClose} className="text-gray-400 text-xl">&times;</button>
         </div>
         <div className="space-y-3">
           <div>
@@ -382,7 +400,7 @@ function BlockEditModal({ block, onSave, onClose, onDelete }: {
               {checklist.map(item => (
                 <div key={item.id} className="flex items-center gap-2">
                   <span className="text-xs text-gray-600 flex-1">{item.text}</span>
-                  <button onClick={() => setChecklist(prev => prev.filter(i => i.id !== item.id))} className="text-red-300 hover:text-red-500 text-sm">&times;</button>
+                  <button onClick={() => setChecklist(prev => prev.filter(i => i.id !== item.id))} className="text-red-300 text-sm">&times;</button>
                 </div>
               ))}
             </div>
@@ -398,8 +416,7 @@ function BlockEditModal({ block, onSave, onClose, onDelete }: {
         <div className="flex gap-2 mt-4">
           <button onClick={() => onSave({ title, duration_minutes: duration, color, date, checklist })}
             className="flex-1 bg-pink-500 text-white text-sm py-2 rounded-lg hover:bg-pink-600">Save</button>
-          <button onClick={onDelete}
-            className="text-sm text-red-400 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-50">Delete</button>
+          <button onClick={onDelete} className="text-sm text-red-400 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-50">Delete</button>
         </div>
       </div>
     </div>
@@ -429,7 +446,7 @@ function AddBlockModal({ date, userId, onSave, onClose }: {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-gray-700">Add Block — {date}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          <button onClick={onClose} className="text-gray-400 text-xl">&times;</button>
         </div>
         <div className="space-y-3">
           <div>
@@ -462,7 +479,7 @@ function AddBlockModal({ date, userId, onSave, onClose }: {
               {checklist.map(item => (
                 <div key={item.id} className="flex items-center gap-2">
                   <span className="text-xs text-gray-600 flex-1">{item.text}</span>
-                  <button onClick={() => setChecklist(prev => prev.filter(i => i.id !== item.id))} className="text-red-300 hover:text-red-500 text-sm">&times;</button>
+                  <button onClick={() => setChecklist(prev => prev.filter(i => i.id !== item.id))} className="text-red-300 text-sm">&times;</button>
                 </div>
               ))}
             </div>
@@ -484,7 +501,6 @@ function AddBlockModal({ date, userId, onSave, onClose }: {
   )
 }
 
-// ============ MAIN PAGE ============
 export default function SummerPlanPage({ user }: { user: User }) {
   const [blocks, setBlocks] = useState<SummerBlock[]>([])
   const [loading, setLoading] = useState(true)
@@ -609,7 +625,6 @@ export default function SummerPlanPage({ user }: { user: User }) {
 
   return (
     <div className="relative">
-      {/* Progress bar */}
       <div className="sticky top-0 z-30 bg-white border-b border-pink-100 px-4 py-3 shadow-sm">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-semibold text-pink-700">
@@ -635,19 +650,14 @@ export default function SummerPlanPage({ user }: { user: User }) {
         </div>
       </div>
 
-      {/* MONTH VIEW */}
       {view === 'month' && (
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => setCurrentMonth(m => {
-              const nm = m.month - 1; return nm < 0 ? { year: m.year - 1, month: 11 } : { ...m, month: nm }
-            })} className="text-pink-400 p-1">◀</button>
+            <button onClick={() => setCurrentMonth(m => { const nm = m.month - 1; return nm < 0 ? { year: m.year - 1, month: 11 } : { ...m, month: nm } })} className="text-pink-400 p-1">◀</button>
             <span className="text-sm font-semibold text-pink-700">
               {new Date(currentMonth.year, currentMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </span>
-            <button onClick={() => setCurrentMonth(m => {
-              const nm = m.month + 1; return nm > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: nm }
-            })} className="text-pink-400 p-1">▶</button>
+            <button onClick={() => setCurrentMonth(m => { const nm = m.month + 1; return nm > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: nm } })} className="text-pink-400 p-1">▶</button>
           </div>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {DAY_NAMES.map(d => <div key={d} className="text-center text-xs text-pink-400 font-medium py-1">{d}</div>)}
@@ -683,7 +693,6 @@ export default function SummerPlanPage({ user }: { user: User }) {
         </div>
       )}
 
-      {/* WEEK VIEW */}
       {view === 'week' && (
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
@@ -716,7 +725,7 @@ export default function SummerPlanPage({ user }: { user: User }) {
                       </div>
                     ))}
                     {isSATDay && <span className="text-[9px] text-yellow-600 font-medium">SAT Day! 🎯</span>}
-                    {undone.length > 4 && <span className="text-[9px] text-gray-400">+{undone.length - 4}</span>}
+                    {undone.length > 4 && <span className="text-[9px] text-gray-400">+{undone.length - 4} more</span>}
                   </div>
                 </button>
               )
@@ -725,17 +734,14 @@ export default function SummerPlanPage({ user }: { user: User }) {
         </div>
       )}
 
-      {/* DAY VIEW */}
       {view === 'day' && (
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]) }}
-              className="text-pink-400 p-1">◀</button>
+            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]) }} className="text-pink-400 p-1">◀</button>
             <span className="text-sm font-semibold text-pink-700">
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </span>
-            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]) }}
-              className="text-pink-400 p-1">▶</button>
+            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]) }} className="text-pink-400 p-1">▶</button>
           </div>
 
           {selectedDate === '2026-08-22' ? (
