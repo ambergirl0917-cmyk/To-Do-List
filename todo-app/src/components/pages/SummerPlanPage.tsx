@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
-// ============ TYPES ============
 interface ChecklistItem { id: string; text: string; done: boolean }
 interface SummerBlock {
   id: string
@@ -20,7 +19,6 @@ interface SummerBlock {
   position: number
 }
 
-// ============ COLORS ============
 export const CATEGORY_COLORS: Record<string, string> = {
   sat: '#f9d8e4',
   college: '#d0e4f5',
@@ -29,14 +27,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   subject: '#fdebd0',
   other: '#e0e0e0',
 }
-export const CATEGORY_TEXT: Record<string, string> = {
-  sat: '#c4607a',
-  college: '#2a5a8a',
-  personal: '#7b5ea7',
-  ibcore: '#3a7a3a',
-  subject: '#a87840',
-  other: '#666666',
-}
+
 const COLOR_OPTIONS = [
   { label: 'Pink (SAT)', bg: '#f9d8e4', text: '#c4607a' },
   { label: 'Blue (College)', bg: '#d0e4f5', text: '#2a5a8a' },
@@ -46,314 +37,289 @@ const COLOR_OPTIONS = [
   { label: 'Gray (Other)', bg: '#e0e0e0', text: '#666666' },
 ]
 
-// ============ SCHEDULE GENERATOR ============
-function generateSummerSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
-  const blocks: Omit<SummerBlock, 'id'>[] = []
-  let position = 0
+function getTextColor(bg: string) {
+  return COLOR_OPTIONS.find(c => c.bg === bg)?.text || '#666'
+}
 
-  const addBlock = (
+function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
+  const blocks: Omit<SummerBlock, 'id'>[] = []
+  let pos = 0
+
+  const add = (
     date: string, title: string, category: string,
     duration_minutes: number, checklist: ChecklistItem[] = [],
     block_type = 'time', quantity: number | null = null
   ) => {
-    const color = CATEGORY_COLORS[category] || CATEGORY_COLORS.other
     blocks.push({
-      user_id: userId, date, title, category, color,
+      user_id: userId, date, title, category,
+      color: CATEGORY_COLORS[category] || CATEGORY_COLORS.other,
       duration_minutes, block_type, quantity,
-      checklist, is_done: false, position: position++
+      checklist, is_done: false, position: pos++
     })
   }
 
-  const vocabSchedule: Record<string, { learn?: number; review: number[] }> = {
-    '2026-07-08': { learn: 14, review: [1, 2] },
-    '2026-07-09': { learn: 15, review: [3, 4] },
-    '2026-07-10': { learn: 16, review: [5, 6, 7] },
-    '2026-07-11': { learn: 17, review: [1, 2, 3] },
-    '2026-07-12': { review: [10, 11, 12, 13] },
-    '2026-07-13': { learn: 18, review: [4, 5, 6] },
-    '2026-07-14': { learn: 19, review: [7, 8, 9] },
-    '2026-07-15': { learn: 20, review: [1, 2, 3] },
-    '2026-07-16': { learn: 21, review: [10, 11, 12] },
-    '2026-07-17': { learn: 22, review: [4, 5, 6, 7] },
-    '2026-07-18': { review: [13, 14, 15, 16] },
-    '2026-07-19': { learn: 23, review: [1, 2, 3] },
-    '2026-07-20': { learn: 24, review: [8, 9, 10] },
-    '2026-07-21': { learn: 25, review: [17, 18, 19] },
-    '2026-07-22': { learn: 26, review: [4, 5, 6] },
-    '2026-07-23': { review: [11, 12, 13, 14] },
-    '2026-07-24': { learn: 27, review: [1, 2, 3] },
-    '2026-07-25': { learn: 28, review: [20, 21, 22] },
-    '2026-07-26': { learn: 29, review: [7, 8, 9] },
-    '2026-07-27': { learn: 30, review: [15, 16, 17] },
-    '2026-07-28': { review: [23, 24, 25] },
-    '2026-07-29': { review: [1, 2, 3, 4, 5] },
-    '2026-07-30': { review: [6, 7, 8, 9, 10] },
-    '2026-07-31': { review: [11, 12, 13, 14, 15] },
-    '2026-08-01': { review: [16, 17, 18, 19, 20] },
-    '2026-08-02': { review: [21, 22, 23, 24, 25] },
-    '2026-08-03': { review: [26, 27, 28, 29, 30] },
-    '2026-08-04': { review: [1, 2, 3, 4, 5] },
-    '2026-08-05': { review: [6, 7, 8, 9, 10] },
-    '2026-08-06': { review: [11, 12, 13, 14, 15] },
-    '2026-08-07': { review: [16, 17, 18, 19, 20] },
-    '2026-08-08': { review: [21, 22, 23, 24, 25] },
-    '2026-08-09': { review: [26, 27, 28, 29, 30] },
-    '2026-08-10': { review: [1, 3, 5, 7, 9] },
-    '2026-08-11': { review: [2, 4, 6, 8, 10] },
-    '2026-08-12': { review: [11, 13, 15, 17, 19] },
-    '2026-08-13': { review: [12, 14, 16, 18, 20] },
-    '2026-08-14': { review: [21, 23, 25, 27, 29] },
-    '2026-08-15': { review: [22, 24, 26, 28, 30] },
-    '2026-08-16': { review: [1, 5, 10, 15, 20] },
-    '2026-08-17': { review: [2, 6, 11, 16, 21] },
-    '2026-08-18': { review: [3, 7, 12, 17, 22] },
-    '2026-08-19': { review: [4, 8, 13, 18, 23] },
-    '2026-08-20': { review: [5, 9, 14, 19, 24] },
-    '2026-08-21': { review: [25, 26, 27, 28, 29, 30] },
-  }
+  // Tracking counters
+  let rwDone = 105 // done up to Q105
+  let challengeRWDone = 0
+  let hardMathDone = 26 // starting Q27
+  let challengeMathDone = 0
+  let pandaChapter = 4 // done ch2,3
+  let vocabSetToLearn = 14
+  let prepProsDone = 0
+  let bioIndex = 0
+  let econIndex = 0
+  let mathReviewIndex = 0
+  let bragSheetHours = 0
 
   const bioUnits = [
-    'A2.2 Cell Structure',
-    'B2.1 Membranes and Transport',
-    'B1.2 Protein',
-    'C1.1 Enzymes and Metabolism',
-    'A3.1 Diversity of Organisms',
-    'A4.1 Evolution',
-    'D4.1 Natural Selection',
-    'D4.2 Stability and Change',
-    'B4.1 Adaptation to Environment',
-    'B4.2 Ecological Niches',
-    'C4.1 Populations and Communities',
+    'A2.2 Cell Structure', 'B2.1 Membranes and Transport', 'B1.2 Protein',
+    'C1.1 Enzymes and Metabolism', 'A3.1 Diversity of Organisms', 'A4.1 Evolution',
+    'D4.1 Natural Selection', 'D4.2 Stability and Change', 'B4.1 Adaptation to Environment',
+    'B4.2 Ecological Niches', 'C4.1 Populations and Communities',
   ]
-
   const econUnits = [
     { title: 'Econ: Review end-of-semester paper + marking', duration: 60 },
     { title: 'Econ Pre-learn: 3.4.1 Inequality', duration: 90 },
     { title: 'Econ Pre-learn: 3.4.2 Poverty', duration: 60 },
     { title: 'Econ Pre-learn: 3.4.3 Causes & Impacts of Inequality and Poverty', duration: 180 },
   ]
-
-  const mathReviewBlocks = [
-    { title: 'Math: Review end-of-semester Paper 1 + marking', duration: 120 },
-    { title: 'Math: Review end-of-semester Paper 2 + marking', duration: 120 },
+  const mathReview = [
+    { title: 'Math: Review Paper 1 + marking', duration: 120 },
+    { title: 'Math: Review Paper 2 + marking', duration: 120 },
     { title: 'Math: Rewrite Paper 1 (timed)', duration: 120 },
     { title: 'Math: Rewrite Paper 2 (timed)', duration: 120 },
-    { title: 'Math: Online drills (teacher exercises)', duration: 60 },
   ]
 
-  let bioIndex = 0
-  let econIndex = 0
-  let mathReviewIndex = 0
-  let pandaChapter = 2
-  let hardMathDone = 12
-  let challengeRWDone = 0
-  let rwDrillsDone = 0
-  let prepProsDone = 0
-  let challengeMathDone = 0
+  // Vocab schedule - learn sets 14-30 flexibly, review 4-5 sets/day
+  const vocabLearnDays = ['2026-07-14','2026-07-15','2026-07-16','2026-07-17','2026-07-18',
+    '2026-07-19','2026-07-21','2026-07-22','2026-07-23','2026-07-24','2026-07-25',
+    '2026-07-26','2026-07-28','2026-07-29','2026-07-30','2026-07-31','2026-08-01']
 
-  const startDate = new Date('2026-07-08')
-  const endDate = new Date('2026-08-31')
-  const satDate = new Date('2026-08-22')
+  const vocabReviewSets: Record<string, number[]> = {
+    '2026-07-14': [1,2,3,4,5],
+    '2026-07-15': [6,7,8,9,10],
+    '2026-07-16': [11,12,13,1,2],
+    '2026-07-17': [3,4,5,6,7],
+    '2026-07-18': [8,9,10,11,12],
+    '2026-07-19': [13,14,15,1,2],
+    '2026-07-21': [3,4,5,6,14],
+    '2026-07-22': [7,8,9,15,16],
+    '2026-07-23': [10,11,12,17,18],
+    '2026-07-24': [1,2,3,19,20],
+    '2026-07-25': [4,5,6,21,22],
+    '2026-07-26': [13,14,15,23,24],
+    '2026-07-28': [1,5,10,15,20],
+    '2026-07-29': [2,6,11,16,21],
+    '2026-07-30': [3,7,12,17,22],
+    '2026-07-31': [4,8,13,18,23],
+    '2026-08-01': [9,14,19,24,25],
+  }
+
+  // After Aug 1, pure review cycling through all 30 sets
+  const generateLateVocabReview = (dateStr: string): number[] => {
+    const d = new Date(dateStr)
+    const dayNum = Math.floor((d.getTime() - new Date('2026-08-01').getTime()) / 86400000)
+    const sets = []
+    for (let i = 0; i < 5; i++) {
+      sets.push(((dayNum * 5 + i) % 30) + 1)
+    }
+    return sets
+  }
+
+  // TODAY Jul 13 - special day (counseling + essay class + lirae)
+  add('2026-07-13', 'Essay class + prep work', 'college', 150)
+  add('2026-07-13', 'Lirae', 'personal', 90)
+
+  const start = new Date('2026-07-14')
+  const end = new Date('2026-08-31')
+  const satDay = new Date('2026-08-22')
   const postSATStart = new Date('2026-08-23')
   const aug1 = new Date('2026-08-01')
+  const collegeResearchEnd = new Date('2026-07-21')
+  const bragSheetStart = new Date('2026-07-18')
 
-  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0]
-    const dayOfWeek = d.getDay()
-    const isSunday = dayOfWeek === 0
-    const isMonday = dayOfWeek === 1
-    const isTuesday = dayOfWeek === 2
-    const isThursday = dayOfWeek === 4
-    const isFriday = dayOfWeek === 5
-    const isSaturday = dayOfWeek === 6
-    const isBeforeSAT = d < satDate
-    const isSATDay = dateStr === '2026-08-22'
+  // SAT rotation tracking
+  let satRotation = 0 // cycles through different SAT task combos
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const ds = d.toISOString().split('T')[0]
+    const dow = d.getDay() // 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+    const isSun = dow === 0
+    const isMon = dow === 1
+    const isTue = dow === 2
+    const isWed = dow === 3
+    const isThu = dow === 4
+    const isFri = dow === 5
+    const isSat = dow === 6
+    const isClassDay = isMon || isThu || isTue || isFri
+    const isMathClass = isMon || isThu
+    const isEngClass = isTue || isFri
+    const isBeforeSAT = d < satDay
+    const isSATDay = ds === '2026-08-22'
     const isPostSAT = d >= postSATStart
-    const isCollegeResearchWeek = d <= new Date('2026-07-21')
+    const isThisWeek = d <= new Date('2026-07-19')
     const isAfterAug1 = d >= aug1
-    const isBMIAWeek = d <= new Date('2026-07-11')
-    const dayNum = Math.floor((d.getTime() - startDate.getTime()) / 86400000)
+    const dayNum = Math.floor((d.getTime() - start.getTime()) / 86400000)
 
-    // SAT DAY — completely blank
     if (isSATDay) continue
 
-    // ========== POST SAT (Aug 23-31) ==========
+    // ===== POST SAT (Aug 23-31) =====
     if (isPostSAT) {
-      if (isSunday) {
-        addBlock(dateStr, 'Catch up / Rest', 'other', 120)
-        addBlock(dateStr, 'Supplemental Essays', 'college', 120)
+      if (isSun) {
+        add(ds, 'Rest & catch up', 'other', 120)
         continue
       }
-      // English & Chinese IO — main focus
-      addBlock(dateStr, 'English IO: Draft & Research', 'ibcore', 120)
-      addBlock(dateStr, 'Chinese IO: Draft & Research', 'ibcore', 120)
-      // EE
-      addBlock(dateStr, 'EE: Writing session', 'ibcore', 90)
-      // Lirae
-      addBlock(dateStr, 'Lirae', 'personal', 60)
-      // Supplemental essays
-      addBlock(dateStr, 'Supplemental Essays', 'college', 120)
-      // IA work (generic editable)
-      addBlock(dateStr, 'IA Work: Working session', 'ibcore', 60)
-      // Subject study (lighter)
-      if (isTuesday || isFriday) {
-        if (bioIndex < bioUnits.length) {
-          addBlock(dateStr, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90)
-          bioIndex++
-        }
+      add(ds, 'English IO: Draft & Research', 'ibcore', 120)
+      add(ds, 'Chinese IO: Draft & Research', 'ibcore', 120)
+      add(ds, 'EE: Writing session', 'ibcore', 90)
+      add(ds, 'Supplemental Essays', 'college', 120)
+      add(ds, 'Lirae', 'personal', 60)
+      add(ds, 'IA Work: Working session', 'ibcore', 60)
+      if (isTue || isFri) {
+        if (bioIndex < bioUnits.length) { add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90); bioIndex++ }
       }
-      if (isMonday || isThursday) {
+      continue
+    }
+
+    // ===== SUNDAY - rest & catch up =====
+    if (isSun) {
+      add(ds, 'RW Drills: 35 questions', 'sat', 105, [], 'quantity', 35); rwDone += 35
+      const reviewSets = vocabReviewSets[ds] || generateLateVocabReview(ds)
+      add(ds, `Vocab: Review Sets ${reviewSets.join(', ')}`, 'sat', reviewSets.length * 5,
+        reviewSets.map(n => ({ id: n.toString(), text: `Set ${n}`, done: false })))
+      add(ds, 'Rest & catch up', 'other', 120)
+      continue
+    }
+
+    // ===== SAT BLOCK =====
+    // Class blocks
+    if (isMathClass) add(ds, 'Math SAT Class (10:00–11:30am)', 'sat', 90)
+    if (isEngClass) add(ds, 'English SAT Class (2:20–3:50pm)', 'sat', 90)
+    if (isEngClass) add(ds, 'Teacher HW: Practice Test Module 1 (45min)', 'sat', 45)
+
+    // Math homework before class
+    if (isMathClass && pandaChapter <= 27) {
+      add(ds, `Panda Book: Chapters ${pandaChapter}–${pandaChapter + 2}`, 'sat', 180)
+      pandaChapter += 3
+    }
+    if (isMathClass && hardMathDone < 150) {
+      add(ds, `PrepPros Hard Math: 8 questions (hw)`, 'sat', 56, [], 'quantity', 8)
+      hardMathDone += 8
+    }
+
+    // English-heavy SAT rotation — more English than math
+    const rotation = satRotation % 7
+    if (rwDone < 1492) {
+      add(ds, 'RW Drills: 35 questions', 'sat', 105, [], 'quantity', 35); rwDone += 35
+    }
+
+    // Vocab - learn new set on learn days, always review
+    if (vocabLearnDays.includes(ds) && vocabSetToLearn <= 30) {
+      add(ds, `Vocab: Learn Set ${vocabSetToLearn} (new)`, 'sat', 40); vocabSetToLearn++
+    }
+    const reviewSets = vocabReviewSets[ds] || generateLateVocabReview(ds)
+    add(ds, `Vocab: Review Sets ${reviewSets.join(', ')}`, 'sat', reviewSets.length * 5,
+      reviewSets.map(n => ({ id: n.toString(), text: `Set ${n}`, done: false })))
+
+    // Challenge RW (English — most days)
+    if (challengeRWDone < 277 && rotation !== 6) {
+      add(ds, 'Challenge RW: 6 questions', 'sat', 36, [], 'quantity', 6); challengeRWDone += 6
+    }
+
+    // English Paper 1 (twice a week - Wed & Sat... but Sat is subject study so Wed & Fri)
+    if (isWed || isFri) {
+      add(ds, 'English Paper 1: Practice writing', 'sat', 60)
+    }
+
+    // Practice tests (every 5 days, not on class days)
+    if (prepProsDone < 10 && dayNum % 5 === 0 && !isClassDay) {
+      add(ds, `PrepPros Practice Test #${prepProsDone + 1} — RW Module`, 'sat', 90); prepProsDone++
+    }
+
+    // Challenge Math (3x/week - lighter since English is priority)
+    if (challengeMathDone < 75 && (isMon || isWed || isFri)) {
+      add(ds, 'OnePrep Challenge Math: 5 questions', 'sat', 35, [], 'quantity', 5); challengeMathDone += 5
+    }
+
+    satRotation++
+
+    // ===== NON-SAT BLOCK (2hrs) =====
+    if (isThisWeek) {
+      // This week: Lirae Mon-Wed, NYT Thu-Fri
+      if (isMon || isTue || isWed) {
+        add(ds, 'Lirae', 'personal', 120)
+      } else if (isThu || isFri) {
+        add(ds, 'Competition: NYT Writing Contest', 'personal', 120)
+      } else if (isSat) {
+        if (bragSheetHours < 7 && d >= bragSheetStart) {
+          add(ds, 'Brag Sheet: Research & writing', 'college', 120); bragSheetHours += 2
+        } else if (bioIndex < bioUnits.length) {
+          add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90); bioIndex++
+        }
         if (econIndex < econUnits.length) {
-          addBlock(dateStr, econUnits[econIndex].title, 'subject', econUnits[econIndex].duration)
-          econIndex++
+          add(ds, econUnits[econIndex].title, 'subject', econUnits[econIndex].duration); econIndex++
         }
       }
-      continue
-    }
-
-    // ========== PRE SAT (Jul 8 - Aug 21) ==========
-    if (isSunday) {
-      if (vocabSchedule[dateStr]) {
-        const v = vocabSchedule[dateStr]
-        if (v.learn) addBlock(dateStr, `Vocab: Learn Set ${v.learn} (new)`, 'sat', 40)
-        if (v.review.length > 0) addBlock(dateStr,
-          `Vocab: Review Sets ${v.review.join(', ')}`, 'sat', v.review.length * 12,
-          v.review.map(n => ({ id: n.toString(), text: `Set ${n}`, done: false }))
-        )
-      }
-      if (rwDrillsDone < 1492) {
-        addBlock(dateStr, `RW Drills: 20 questions (${rwDrillsDone + 1}–${rwDrillsDone + 20})`, 'sat', 60, [], 'quantity', 20)
-        rwDrillsDone += 20
-      }
-      if (isCollegeResearchWeek) addBlock(dateStr, 'College Research', 'college', 60)
-      addBlock(dateStr, 'EE: Research & Planning', 'ibcore', 45)
-      addBlock(dateStr, 'Lirae', 'personal', 45)
-      continue
-    }
-
-    // SAT Classes (only before SAT)
-    if (isMonday || isThursday) {
-      addBlock(dateStr, 'Math SAT Class (10:00–11:30am)', 'sat', 90)
-    }
-    if (isTuesday || isFriday) {
-      addBlock(dateStr, 'English SAT Class (2:20–3:50pm)', 'sat', 90)
-      addBlock(dateStr, 'Teacher HW: Practice Test Module 1 (45min)', 'sat', 45)
-    }
-
-    // RW Drills
-    if (rwDrillsDone < 1492) {
-      addBlock(dateStr, `RW Drills: 35 questions (${rwDrillsDone + 1}–${rwDrillsDone + 35})`, 'sat', 105, [], 'quantity', 35)
-      rwDrillsDone += 35
-    }
-
-    // Challenge RW
-    if (challengeRWDone < 277) {
-      addBlock(dateStr, `Challenge RW: 6 questions (${challengeRWDone + 1}–${challengeRWDone + 6})`, 'sat', 36, [], 'quantity', 6)
-      challengeRWDone += 6
-    }
-
-    // Vocab
-    if (vocabSchedule[dateStr]) {
-      const v = vocabSchedule[dateStr]
-      if (v.learn) addBlock(dateStr, `Vocab: Learn Set ${v.learn} (new)`, 'sat', 40)
-      if (v.review.length > 0) addBlock(dateStr,
-        `Vocab: Review Sets ${v.review.join(', ')}`, 'sat', v.review.length * 12,
-        v.review.map(n => ({ id: n.toString(), text: `Set ${n}`, done: false }))
-      )
-    }
-
-    // Hard Math (not on class days)
-    if (hardMathDone < 150 && !isMonday && !isThursday) {
-      const q = 8
-      addBlock(dateStr, `PrepPros Hard Math: Q${hardMathDone + 1}–${hardMathDone + q} (${q}q × 7min)`, 'sat', q * 7, [], 'quantity', q)
-      hardMathDone += q
-    }
-
-    // Panda Book
-    if (pandaChapter <= 27 && (isMonday || isThursday || dayOfWeek === 3 || isSaturday)) {
-      addBlock(dateStr, `Panda Book: Chapter ${pandaChapter}`, 'sat', 60)
-      pandaChapter++
-    }
-
-    // PrepPros practice tests every 5 days
-    if (prepProsDone < 10 && dayNum % 5 === 3 && !isTuesday && !isFriday) {
-      addBlock(dateStr, `PrepPros Practice Test #${prepProsDone + 1} — RW Module`, 'sat', 90)
-      prepProsDone++
-    }
-
-    // Challenge Math
-    if (challengeMathDone < 75 && dayNum % 3 === 2) {
-      addBlock(dateStr, `PrepPros Challenge Math: Q${challengeMathDone + 1}–${challengeMathDone + 5}`, 'sat', 35, [], 'quantity', 5)
-      challengeMathDone += 5
-    }
-
-    // BM IA this week only
-    if (isBMIAWeek) {
-      addBlock(dateStr, 'BM IA: Work session', 'ibcore', 60)
-    }
-
-    // College Research first 2 weeks
-    if (isCollegeResearchWeek) {
-      addBlock(dateStr, 'College Research', 'college', isMonday || isThursday || isTuesday || isFriday ? 60 : 90)
-    }
-
-    // College App Essay
-    if (!isAfterAug1) {
-      addBlock(dateStr, 'Common App Essay (1hr)', 'college', 60)
     } else {
-      addBlock(dateStr, 'Supplemental Essays (2hr)', 'college', 120)
-    }
-
-    // EE (light before SAT)
-    if (!isBMIAWeek || isSaturday) {
-      addBlock(dateStr, 'EE: Research & Planning', 'ibcore', 45)
-    }
-
-    // Lirae
-    addBlock(dateStr, 'Lirae', 'personal', 60)
-
-    // Competition 3x/week
-    if (dayOfWeek === 3 || isSaturday || isTuesday) {
-      if (dateStr === '2026-07-09') {
-        addBlock(dateStr, 'Competition: Research & Registration', 'personal', 60)
-      } else {
-        addBlock(dateStr, 'Competition: Work session', 'personal', 45)
+      // Normal rotation from next week
+      if (isMon) {
+        add(ds, 'Lirae', 'personal', 120)
+      } else if (isTue) {
+        add(ds, 'Competition: NYT Writing Contest', 'personal', 120)
+      } else if (isWed) {
+        add(ds, 'Competition: NYT Writing Contest', 'personal', 60)
+        add(ds, 'EE: Research & Writing', 'ibcore', 60)
+      } else if (isThu) {
+        add(ds, 'Lirae', 'personal', 120)
+      } else if (isFri) {
+        if (!isAfterAug1) {
+          add(ds, 'Common App Essay', 'college', 120)
+        } else {
+          add(ds, 'Supplemental Essays', 'college', 120)
+        }
+        // College research first 2 weeks
+        if (d <= collegeResearchEnd) {
+          add(ds, 'College Research', 'college', 60)
+        }
+      } else if (isSat) {
+        // Subject study rotation
+        if (bioIndex < bioUnits.length) {
+          add(ds, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90); bioIndex++
+        }
+        if (econIndex < econUnits.length) {
+          add(ds, econUnits[econIndex].title, 'subject', econUnits[econIndex].duration); econIndex++
+        } else if (mathReviewIndex < mathReview.length) {
+          add(ds, mathReview[mathReviewIndex].title, 'subject', mathReview[mathReviewIndex].duration); mathReviewIndex++
+        }
+        // Brag sheet end of July
+        if (bragSheetHours < 7 && d >= bragSheetStart) {
+          add(ds, 'Brag Sheet: Research & writing', 'college', 120); bragSheetHours += 2
+        }
+        // EE on Saturdays too
+        add(ds, 'EE: Research & Writing', 'ibcore', 60)
       }
-    }
 
-    // IO light blocks (Wed & Sat only, after BM IA week)
-    if (!isBMIAWeek && (dayOfWeek === 3 || isSaturday)) {
-      addBlock(dateStr, 'IO: Working session', 'ibcore', 60)
-    }
+      // IO light blocks (2hrs/week, Wed + one other day)
+      if (isWed && !isThisWeek) {
+        add(ds, 'IO: Working session', 'ibcore', 60)
+      }
 
-    // English Paper 1 practice (Wed & Sat)
-    if (dayOfWeek === 3 || isSaturday) {
-      addBlock(dateStr, 'English Paper 1: Practice writing', 'subject', 60)
-    }
+      // Common App activities sheet (one time)
+      if (ds === '2026-07-22') {
+        add(ds, 'Common App: Activities Google Sheet (1hr)', 'college', 60)
+      }
 
-    // Bio (Saturdays)
-    if (isSaturday && bioIndex < bioUnits.length) {
-      addBlock(dateStr, `Bio Review: ${bioUnits[bioIndex]}`, 'subject', 90)
-      bioIndex++
-    }
-
-    // Econ (Wednesdays)
-    if (dayOfWeek === 3 && econIndex < econUnits.length) {
-      addBlock(dateStr, econUnits[econIndex].title, 'subject', econUnits[econIndex].duration)
-      econIndex++
-    }
-
-    // Math review (Thursdays)
-    if (isThursday && mathReviewIndex < mathReviewBlocks.length) {
-      addBlock(dateStr, mathReviewBlocks[mathReviewIndex].title, 'subject', mathReviewBlocks[mathReviewIndex].duration)
-      mathReviewIndex++
+      // BM IA - sprinkle this week on lighter days
+      if (ds === '2026-07-14' || ds === '2026-07-15' || ds === '2026-07-16') {
+        add(ds, 'BM IA: Work session', 'ibcore', 60)
+      }
     }
   }
 
   return blocks
 }
 
-// ============ BLOCK EDIT MODAL ============
+// ============ MODALS ============
 function BlockEditModal({ block, onSave, onClose, onDelete }: {
   block: SummerBlock
   onSave: (updates: Partial<SummerBlock>) => void
@@ -378,7 +344,7 @@ function BlockEditModal({ block, onSave, onClose, onDelete }: {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-gray-700">Edit Block</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
         </div>
         <div className="space-y-3">
           <div>
@@ -406,7 +372,7 @@ function BlockEditModal({ block, onSave, onClose, onDelete }: {
               {COLOR_OPTIONS.map(c => (
                 <button key={c.bg} onClick={() => setColor(c.bg)}
                   className={`w-7 h-7 rounded-full border-2 transition-transform ${color === c.bg ? 'border-gray-600 scale-110' : 'border-transparent'}`}
-                  style={{ background: c.bg }} title={c.label} />
+                  style={{ background: c.bg }} />
               ))}
             </div>
           </div>
@@ -440,7 +406,6 @@ function BlockEditModal({ block, onSave, onClose, onDelete }: {
   )
 }
 
-// ============ ADD BLOCK MODAL ============
 function AddBlockModal({ date, userId, onSave, onClose }: {
   date: string
   userId: string
@@ -487,7 +452,7 @@ function AddBlockModal({ date, userId, onSave, onClose }: {
               {COLOR_OPTIONS.map(c => (
                 <button key={c.bg} onClick={() => setColor(c.bg)}
                   className={`w-7 h-7 rounded-full border-2 transition-transform ${color === c.bg ? 'border-gray-600 scale-110' : 'border-transparent'}`}
-                  style={{ background: c.bg }} title={c.label} />
+                  style={{ background: c.bg }} />
               ))}
             </div>
           </div>
@@ -510,13 +475,10 @@ function AddBlockModal({ date, userId, onSave, onClose }: {
             </div>
           </div>
         </div>
-        <button
-          onClick={() => {
-            if (!title.trim()) return
-            onSave({ user_id: userId, date, title, category: 'other', color, duration_minutes: duration, block_type: 'time', quantity: null, checklist, is_done: false, position: 999 })
-          }}
-          className="w-full mt-4 bg-pink-500 text-white text-sm py-2 rounded-lg hover:bg-pink-600"
-        >Add Block</button>
+        <button onClick={() => {
+          if (!title.trim()) return
+          onSave({ user_id: userId, date, title, category: 'other', color, duration_minutes: duration, block_type: 'time', quantity: null, checklist, is_done: false, position: 999 })
+        }} className="w-full mt-4 bg-pink-500 text-white text-sm py-2 rounded-lg hover:bg-pink-600">Add Block</button>
       </div>
     </div>
   )
@@ -547,23 +509,17 @@ export default function SummerPlanPage({ user }: { user: User }) {
 
   const fetchBlocks = async () => {
     const { data } = await supabase.from('summer_blocks').select('*').eq('user_id', user.id).order('position')
-    if (data && data.length > 0) {
-      setBlocks(data)
-      setInitialized(true)
-    } else {
-      setInitialized(false)
-    }
+    if (data && data.length > 0) { setBlocks(data); setInitialized(true) }
+    else setInitialized(false)
     setLoading(false)
   }
 
   const initializeSchedule = async () => {
     setLoading(true)
-    const schedule = generateSummerSchedule(user.id)
-    const chunkSize = 50
+    const schedule = generateSchedule(user.id)
     const allBlocks: SummerBlock[] = []
-    for (let i = 0; i < schedule.length; i += chunkSize) {
-      const chunk = schedule.slice(i, i + chunkSize)
-      const { data } = await supabase.from('summer_blocks').insert(chunk).select()
+    for (let i = 0; i < schedule.length; i += 50) {
+      const { data } = await supabase.from('summer_blocks').insert(schedule.slice(i, i + 50)).select()
       if (data) allBlocks.push(...data)
     }
     setBlocks(allBlocks)
@@ -626,17 +582,6 @@ export default function SummerPlanPage({ user }: { user: User }) {
   const weekDates = getWeekDates(currentWeekStart)
   const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-  const prevWeek = () => {
-    const d = new Date(currentWeekStart)
-    d.setDate(d.getDate() - 7)
-    setCurrentWeekStart(d.toISOString().split('T')[0])
-  }
-  const nextWeek = () => {
-    const d = new Date(currentWeekStart)
-    d.setDate(d.getDate() + 7)
-    setCurrentWeekStart(d.toISOString().split('T')[0])
-  }
-
   const getDaysInMonth = (year: number, month: number) => {
     const firstDay = new Date(year, month, 1).getDay()
     const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -654,8 +599,8 @@ export default function SummerPlanPage({ user }: { user: User }) {
   if (!initialized) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <p className="text-gray-500 text-sm text-center">No summer plan yet! Click to generate your full Jul 8 – Aug 31 schedule.</p>
-        <button onClick={initializeSchedule} className="bg-pink-500 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-pink-600 transition-colors">
+        <p className="text-gray-500 text-sm text-center">No summer plan yet!</p>
+        <button onClick={initializeSchedule} className="bg-pink-500 text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-pink-600">
           Generate My Summer Plan 🌸
         </button>
       </div>
@@ -664,7 +609,7 @@ export default function SummerPlanPage({ user }: { user: User }) {
 
   return (
     <div className="relative">
-      {/* Sticky progress bar */}
+      {/* Progress bar */}
       <div className="sticky top-0 z-30 bg-white border-b border-pink-100 px-4 py-3 shadow-sm">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-semibold text-pink-700">
@@ -695,15 +640,13 @@ export default function SummerPlanPage({ user }: { user: User }) {
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <button onClick={() => setCurrentMonth(m => {
-              const newMonth = m.month - 1
-              return newMonth < 0 ? { year: m.year - 1, month: 11 } : { ...m, month: newMonth }
+              const nm = m.month - 1; return nm < 0 ? { year: m.year - 1, month: 11 } : { ...m, month: nm }
             })} className="text-pink-400 p-1">◀</button>
             <span className="text-sm font-semibold text-pink-700">
               {new Date(currentMonth.year, currentMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </span>
             <button onClick={() => setCurrentMonth(m => {
-              const newMonth = m.month + 1
-              return newMonth > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: newMonth }
+              const nm = m.month + 1; return nm > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: nm }
             })} className="text-pink-400 p-1">▶</button>
           </div>
           <div className="grid grid-cols-7 gap-1 mb-1">
@@ -713,26 +656,25 @@ export default function SummerPlanPage({ user }: { user: User }) {
             {monthDays.map((dateStr, i) => {
               if (!dateStr) return <div key={i} />
               const dayBlocks = blocks.filter(b => b.date === dateStr)
-              const undoneBlocks = dayBlocks.filter(b => !b.is_done)
+              const undone = dayBlocks.filter(b => !b.is_done)
               const isSelected = dateStr === selectedDate
               const isToday = dateStr === new Date().toISOString().split('T')[0]
               const isSATDay = dateStr === '2026-08-22'
               return (
                 <button key={dateStr} onClick={() => { setSelectedDate(dateStr); setView('day') }}
-                  className={`rounded-xl p-1 min-h-[60px] text-left transition-colors ${isSelected ? 'ring-2 ring-pink-400' : ''} ${isToday ? 'bg-pink-50' : isSATDay ? 'bg-yellow-50' : 'bg-white'} border border-pink-50`}>
+                  className={`rounded-xl p-1 min-h-[60px] text-left border border-pink-50 ${isSelected ? 'ring-2 ring-pink-400' : ''} ${isToday ? 'bg-pink-50' : isSATDay ? 'bg-yellow-50' : 'bg-white'}`}>
                   <span className={`text-xs font-medium ${isToday ? 'text-pink-600' : isSATDay ? 'text-yellow-600' : 'text-gray-500'}`}>
-                    {new Date(dateStr + 'T00:00:00').getDate()}
-                    {isSATDay ? ' 🎯' : ''}
+                    {new Date(dateStr + 'T00:00:00').getDate()}{isSATDay ? '🎯' : ''}
                   </span>
                   <div className="flex flex-col gap-0.5 mt-0.5">
-                    {undoneBlocks.slice(0, 3).map(b => (
-                      <div key={b.id} style={{ background: b.color }} className="rounded text-xs px-1 truncate">
-                        <span style={{ color: COLOR_OPTIONS.find(c => c.bg === b.color)?.text || '#666' }} className="text-[9px]">
-                          {b.title.length > 8 ? b.title.slice(0, 8) + '…' : b.title}
+                    {undone.slice(0, 3).map(b => (
+                      <div key={b.id} style={{ background: b.color }} className="rounded px-1">
+                        <span style={{ color: getTextColor(b.color) }} className="text-[9px] truncate block">
+                          {b.title.slice(0, 8)}{b.title.length > 8 ? '…' : ''}
                         </span>
                       </div>
                     ))}
-                    {undoneBlocks.length > 3 && <span className="text-[9px] text-gray-400">+{undoneBlocks.length - 3}</span>}
+                    {undone.length > 3 && <span className="text-[9px] text-gray-400">+{undone.length - 3}</span>}
                   </div>
                 </button>
               )
@@ -745,12 +687,11 @@ export default function SummerPlanPage({ user }: { user: User }) {
       {view === 'week' && (
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={prevWeek} className="text-pink-400 p-1 hover:text-pink-600">◀</button>
+            <button onClick={() => { const d = new Date(currentWeekStart); d.setDate(d.getDate() - 7); setCurrentWeekStart(d.toISOString().split('T')[0]) }} className="text-pink-400 p-1">◀</button>
             <span className="text-xs font-semibold text-pink-700">
-              {new Date(weekDates[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
-              {new Date(weekDates[6] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {new Date(weekDates[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(weekDates[6] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
-            <button onClick={nextWeek} className="text-pink-400 p-1 hover:text-pink-600">▶</button>
+            <button onClick={() => { const d = new Date(currentWeekStart); d.setDate(d.getDate() + 7); setCurrentWeekStart(d.toISOString().split('T')[0]) }} className="text-pink-400 p-1">▶</button>
           </div>
           <div className="grid grid-cols-7 gap-1">
             {weekDates.map((dateStr, i) => {
@@ -761,21 +702,21 @@ export default function SummerPlanPage({ user }: { user: User }) {
               const isSATDay = dateStr === '2026-08-22'
               return (
                 <button key={dateStr} onClick={() => { setSelectedDate(dateStr); setView('day') }}
-                  className={`rounded-xl p-2 min-h-[100px] text-left transition-colors border ${isSelected ? 'border-pink-400 ring-1 ring-pink-300' : 'border-pink-50'} ${isToday ? 'bg-pink-50' : isSATDay ? 'bg-yellow-50' : 'bg-white'}`}>
+                  className={`rounded-xl p-2 min-h-[100px] text-left border ${isSelected ? 'border-pink-400 ring-1 ring-pink-300' : 'border-pink-50'} ${isToday ? 'bg-pink-50' : isSATDay ? 'bg-yellow-50' : 'bg-white'}`}>
                   <div className={`text-xs font-semibold mb-1 ${isToday ? 'text-pink-600' : isSATDay ? 'text-yellow-600' : 'text-gray-500'}`}>
                     <div>{DAY_NAMES[i]}</div>
-                    <div>{new Date(dateStr + 'T00:00:00').getDate()}{isSATDay ? ' 🎯' : ''}</div>
+                    <div>{new Date(dateStr + 'T00:00:00').getDate()}{isSATDay ? '🎯' : ''}</div>
                   </div>
                   <div className="flex flex-col gap-0.5">
                     {undone.slice(0, 4).map(b => (
                       <div key={b.id} style={{ background: b.color }} className="rounded px-1 py-0.5">
-                        <span style={{ color: COLOR_OPTIONS.find(c => c.bg === b.color)?.text || '#666' }} className="text-[9px] leading-tight block truncate">
-                          {b.title.length > 10 ? b.title.slice(0, 10) + '…' : b.title}
+                        <span style={{ color: getTextColor(b.color) }} className="text-[9px] leading-tight block truncate">
+                          {b.title.slice(0, 12)}{b.title.length > 12 ? '…' : ''}
                         </span>
                       </div>
                     ))}
                     {isSATDay && <span className="text-[9px] text-yellow-600 font-medium">SAT Day! 🎯</span>}
-                    {undone.length > 4 && <span className="text-[9px] text-gray-400">+{undone.length - 4} more</span>}
+                    {undone.length > 4 && <span className="text-[9px] text-gray-400">+{undone.length - 4}</span>}
                   </div>
                 </button>
               )
@@ -788,19 +729,13 @@ export default function SummerPlanPage({ user }: { user: User }) {
       {view === 'day' && (
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => {
-              const d = new Date(selectedDate)
-              d.setDate(d.getDate() - 1)
-              setSelectedDate(d.toISOString().split('T')[0])
-            }} className="text-pink-400 p-1 hover:text-pink-600">◀</button>
+            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); setSelectedDate(d.toISOString().split('T')[0]) }}
+              className="text-pink-400 p-1">◀</button>
             <span className="text-sm font-semibold text-pink-700">
               {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </span>
-            <button onClick={() => {
-              const d = new Date(selectedDate)
-              d.setDate(d.getDate() + 1)
-              setSelectedDate(d.toISOString().split('T')[0])
-            }} className="text-pink-400 p-1 hover:text-pink-600">▶</button>
+            <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d.toISOString().split('T')[0]) }}
+              className="text-pink-400 p-1">▶</button>
           </div>
 
           {selectedDate === '2026-08-22' ? (
@@ -815,24 +750,22 @@ export default function SummerPlanPage({ user }: { user: User }) {
                 <div className="text-center text-pink-200 text-sm italic py-8">No blocks for this day</div>
               )}
               {todayBlocks.map(block => {
-                const textColor = COLOR_OPTIONS.find(c => c.bg === block.color)?.text || '#666'
-                const hours = Math.floor(block.duration_minutes / 60)
-                const mins = block.duration_minutes % 60
-                const durationStr = hours > 0 ? `${hours}h${mins > 0 ? ` ${mins}m` : ''}` : `${mins}m`
+                const textColor = getTextColor(block.color)
+                const h = Math.floor(block.duration_minutes / 60)
+                const m = block.duration_minutes % 60
+                const dur = h > 0 ? `${h}h${m > 0 ? ` ${m}m` : ''}` : `${m}m`
                 return (
                   <div key={block.id} style={{ background: block.color }}
-                    className={`rounded-xl p-3 transition-all ${block.is_done ? 'opacity-50' : ''}`}>
+                    className={`rounded-xl p-3 ${block.is_done ? 'opacity-50' : ''}`}>
                     <div className="flex items-start gap-2">
                       <button onClick={() => toggleBlock(block.id)}
-                        className="w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors"
+                        className="w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center"
                         style={{ borderColor: textColor, background: block.is_done ? textColor : 'transparent' }}>
                         {block.is_done && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${block.is_done ? 'line-through opacity-60' : ''}`} style={{ color: textColor }}>
-                          {block.title}
-                        </p>
-                        <p className="text-xs opacity-60 mt-0.5" style={{ color: textColor }}>{durationStr}</p>
+                        <p className={`text-sm font-medium ${block.is_done ? 'line-through opacity-60' : ''}`} style={{ color: textColor }}>{block.title}</p>
+                        <p className="text-xs opacity-60 mt-0.5" style={{ color: textColor }}>{dur}</p>
                         {block.checklist && block.checklist.length > 0 && (
                           <div className="mt-2 space-y-1">
                             {block.checklist.map(item => (
@@ -842,16 +775,13 @@ export default function SummerPlanPage({ user }: { user: User }) {
                                   style={{ borderColor: textColor, background: item.done ? textColor : 'transparent' }}>
                                   {item.done && <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                                 </div>
-                                <span className={`text-xs ${item.done ? 'line-through opacity-50' : ''}`} style={{ color: textColor }}>
-                                  {item.text}
-                                </span>
+                                <span className={`text-xs ${item.done ? 'line-through opacity-50' : ''}`} style={{ color: textColor }}>{item.text}</span>
                               </button>
                             ))}
                           </div>
                         )}
                       </div>
-                      <button onClick={() => setEditingBlock(block)}
-                        className="text-xs opacity-40 hover:opacity-70 p-1 flex-shrink-0" style={{ color: textColor }}>✎</button>
+                      <button onClick={() => setEditingBlock(block)} className="text-xs opacity-40 hover:opacity-70 p-1" style={{ color: textColor }}>✎</button>
                     </div>
                   </div>
                 )
@@ -862,20 +792,10 @@ export default function SummerPlanPage({ user }: { user: User }) {
       )}
 
       {editingBlock && (
-        <BlockEditModal
-          block={editingBlock}
-          onSave={updates => updateBlock(editingBlock.id, updates)}
-          onClose={() => setEditingBlock(null)}
-          onDelete={() => deleteBlock(editingBlock.id)}
-        />
+        <BlockEditModal block={editingBlock} onSave={u => updateBlock(editingBlock.id, u)} onClose={() => setEditingBlock(null)} onDelete={() => deleteBlock(editingBlock.id)} />
       )}
       {addingToDate && (
-        <AddBlockModal
-          date={addingToDate}
-          userId={user.id}
-          onSave={addBlock}
-          onClose={() => setAddingToDate(null)}
-        />
+        <AddBlockModal date={addingToDate} userId={user.id} onSave={addBlock} onClose={() => setAddingToDate(null)} />
       )}
     </div>
   )
