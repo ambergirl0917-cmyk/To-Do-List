@@ -100,8 +100,7 @@ function generateSchedule(userId: string): Omit<SummerBlock, 'id'>[] {
     for (let i = 0; i < 5; i++) {
       sets.push(((dayNum * 3 + i * 7) % available) + 1)
     }
-    return [...new Set(sets)].slice(0, 5)
-  }
+return Array.from(new Set(sets)).slice(0, 5)  }
 
   // TODAY Jul 13
   add('2026-07-13', 'Essay class + prep work', 'college', 150)
