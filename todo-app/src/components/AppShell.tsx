@@ -180,3 +180,4 @@ export default function AppShell({ user }: AppShellProps) {
     </div>
   )
 }
+
