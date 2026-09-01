@@ -147,7 +147,7 @@ export default function AppShell({ user }: AppShellProps) {
       case 'sat': return <SATPage {...props} />
       case 'extracurricular': return <ExtracurricularPage {...props} />
       case 'college': return <CollegeAppPage {...props} />
-      case 'planner': return <WeeklyPlannerPage user={user} totalWeeks={plannerWeeks} />
+      case 'planner': return <WeeklyPlannerPage user={user} />
       case 'deadlines': return <DeadlinesPage user={user} onDeadlineChange={fetchUrgentDeadlines} />
       case 'archive': return <ArchivePage user={user} />
       case 'settings': return <SettingsPage user={user} />
