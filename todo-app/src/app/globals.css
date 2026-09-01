@@ -3,30 +3,62 @@
 @tailwind utilities;
 
 :root {
+  /* Morandi palette */
+  --morandi-pink: #FAE4EC;
+  --morandi-pink-text: #9A7080;
+  --morandi-sand: #F5EEE0;
+  --morandi-sand-text: #907860;
+  --morandi-blue: #D8E8F8;
+  --morandi-blue-text: #5878A0;
+  --morandi-sage: #C8D8CC;
+  --morandi-sage-text: #507060;
+  --morandi-mauve: #DDD0E0;
+  --morandi-mauve-text: #706080;
+  --morandi-linen: #EDE8DC;
+  --morandi-linen-text: #807868;
+
+  /* UI */
+  --bg: #FAFAF8;
+  --card-bg: #ffffff;
+  --card-border: #E8E0DC;
+  --section-header: #FBF3F5;
+  --text-primary: #6E6068;
+  --text-secondary: #A898A0;
+  --text-muted: #C4B8BC;
+  --divider: #F0EAE8;
+
+  /* Urgent */
+  --urgent-today-bg: #FDE8E8;
+  --urgent-today-text: #C07070;
+  --urgent-week-bg: #FEF4EC;
+  --urgent-week-text: #B08050;
+
+  /* Legacy pink (kept for compatibility) */
   --pink-50: #FFF5F8;
-  --pink-100: #FDE8F0;
-  --pink-200: #FADDE8;
-  --pink-300: #F9D6E3;
-  --pink-400: #F4AFC8;
-  --pink-500: #E8829F;
-  --pink-600: #D4627F;
-  --pink-700: #B5476A;
-  --pink-800: #993556;
+  --pink-100: #FAE4EC;
+  --pink-200: #F0D0D8;
+  --pink-300: #E8C4CC;
+  --pink-400: #D4A8B4;
+  --pink-500: #C49AAA;
+  --pink-600: #B08090;
+  --pink-700: #9A7080;
+  --pink-800: #806070;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  background: var(--pink-50);
+  background: var(--bg);
   font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--text-primary);
 }
 
 .scrollbar-thin::-webkit-scrollbar { width: 4px; }
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--pink-300); border-radius: 4px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--morandi-pink-text); opacity: 0.3; border-radius: 4px; }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: pointer;
 }
 
@@ -44,3 +76,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   to { opacity: 1; }
 }
 .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slideDown { animation: slideDown 0.2s ease-out; }
