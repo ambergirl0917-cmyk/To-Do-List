@@ -210,3 +210,69 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
   }
 
   const deleteSlot = async (id: string) =>
+ {
+    const slot = slots.find(s => s.id === id)
+    if (slot) { setDeletedSlots([slot]); setShowUndo(true); setTimeout(() => setShowUndo(false), 5000) }
+    setSlots(prev => prev.filter(s => s.id !== id))
+    await supabase.from('weekly_slots').delete().eq('id', id)
+  }
+
+  const undoDelete = async () => {
+    if (deletedSlots.length === 0) return
+    const slot = deletedSlots[0]
+    const { data } = await supabase.from('weekly_slots').insert({
+      user_id: slot.user_id, day: slot.day, time_slot: slot.time_slot,
+      task: slot.task, notes: slot.notes, progress: slot.progress,
+      position: slot.position, week_number: slot.week_number, checklist: slot.checklist
+    }).select().single()
+    if (data) setSlots(prev => [...prev, data])
+    setDeletedSlots([])
+    setShowUndo(false)
+  }
+
+  const moveSlot = async (id: string, newDay: string, newWeek: number) => {
+    setSlots(prev => prev.map(s => s.id === id ? { ...s, day: newDay, week_number: newWeek } : s))
+    await supabase.from('weekly_slots').update({ day: newDay, week_number: newWeek }).eq('id', id)
+    setShowMoveMenu(null)
+  }
+
+  const resetWeek = async () => {
+    const weekSlotIds = slots.filter(s => (s.week_number ?? 1) === activeWeek).map(s => s.id)
+    setSlots(prev => prev.filter(s => (s.week_number ?? 1) !== activeWeek))
+    for (const id of weekSlotIds) await supabase.from('weekly_slots').delete().eq('id', id)
+    for (const day of DAYS) {
+      const key = `${activeWeek}-${day}`
+      setDayNotes(prev => { const n = { ...prev }; delete n[key]; return n })
+      await supabase.from('weekly_day_notes').delete().eq('user_id', user.id).eq('week_number', activeWeek).eq('day', day)
+    }
+    setShowResetConfirm(false)
+  }
+
+  const timeToMinutes = (t: string): number => {
+    if (!t) return -1
+    const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
+    if (!match) return -1
+    let h = parseInt(match[1])
+    const m = parseInt(match[2])
+    const isPM = match[3].toUpperCase() === 'PM'
+    if (isPM && h !== 12) h += 12
+    if (!isPM && h === 12) h = 0
+    return h * 60 + m
+  }
+
+  const weekSlots = slots.filter(s => (s.week_number ?? 1) === activeWeek)
+
+  return (
+    <div>
+      {showUndo && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 text-white text-sm px-4 py-2.5 rounded-xl flex items-center gap-3 z-50 shadow-lg" style={{ background: '#4A4040' }}>
+          <span>Slot deleted</span>
+          <button onClick={undoDelete} className="font-semibold" style={{ color: 'var(--morandi-pink)' }}>Undo</button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Planner</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+            <button key={w} onClick={() => setActiveWeek(w)}
