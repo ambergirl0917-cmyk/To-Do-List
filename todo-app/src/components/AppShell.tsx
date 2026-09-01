@@ -1,3 +1,4 @@
+import HomePage from './pages/HomePage'
 'use client'
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
