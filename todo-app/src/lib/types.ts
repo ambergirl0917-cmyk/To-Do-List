@@ -48,6 +48,7 @@ export interface WeeklySlot {
   checklist: ChecklistItem[]
   is_done: boolean
   position: number
+  notes: string
 }
 
 export interface Deadline {
