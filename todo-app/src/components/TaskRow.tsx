@@ -31,6 +31,14 @@ const SECTIONS = [
   { id: 'others', name: 'Others' },
 ]
 
+const PROGRESS_STYLES: Record<Progress, { bg: string; text: string }> = {
+  '0%':   { bg: 'var(--morandi-pink)',  text: 'var(--morandi-pink-text)' },
+  '20%':  { bg: 'var(--morandi-sand)',  text: 'var(--morandi-sand-text)' },
+  '50%':  { bg: 'var(--morandi-blue)',  text: 'var(--morandi-blue-text)' },
+  '70%':  { bg: 'var(--morandi-mauve)', text: 'var(--morandi-mauve-text)' },
+  '100%': { bg: 'var(--morandi-sage)',  text: 'var(--morandi-sage-text)' },
+}
+
 interface TaskRowProps {
   task: Task
   onUpdate: (id: string, updates: Partial<Task>) => void
@@ -57,80 +65,63 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
 
   const days = getDaysUntil(task.due_date)
   const showsAs = getShowsAs(task.due_date)
-
   const reminderThreshold = task.reminder_days ?? 2
   const isUrgent = days !== null && days >= 0 && days <= reminderThreshold
-  const rowBg = isUrgent ? 'bg-red-50 border-l-2 border-red-300' : ''
-
   const hasNotes = !!(task.notes || (task.checklist && task.checklist.length > 0))
+  const progressStyle = PROGRESS_STYLES[task.progress] || PROGRESS_STYLES['0%']
 
-  const handleCheck = () => { onArchive(task.id) }
+  const rowBg = isUrgent ? 'var(--urgent-today-bg)' : undefined
 
+  // ===== MOBILE =====
   if (isMobile) {
     return (
       <>
-        <div
-          ref={setNodeRef}
-          style={style}
-          className={`px-3 py-3 border-b border-pink-50 ${rowBg}`}
-        >
+        <div ref={setNodeRef} style={{ ...style, background: rowBg }} className="px-3 py-3 border-b" style2={{ borderColor: 'var(--divider)' }}>
           <div className="flex items-center gap-3 mb-2">
-            <button
-              onClick={handleCheck}
-              className="w-6 h-6 rounded-full border-2 border-pink-300 hover:border-pink-500 hover:bg-pink-100 flex-shrink-0 transition-colors"
-            />
-            <input
-              value={task.task}
-              onChange={e => onUpdate(task.id, { task: e.target.value })}
-              placeholder="Task..."
-              className="flex-1 bg-transparent text-base text-gray-700 outline-none placeholder-pink-200 min-w-0"
-            />
+            <button onClick={() => onArchive(task.id)}
+              className="w-6 h-6 rounded-full border-2 flex-shrink-0 transition-colors"
+              style={{ borderColor: 'var(--morandi-pink-text)' }} />
+            <input value={task.task} onChange={e => onUpdate(task.id, { task: e.target.value })}
+              placeholder="Task..." className="flex-1 bg-transparent text-base outline-none min-w-0"
+              style={{ color: 'var(--text-primary)' }} />
           </div>
-
           <div className="flex items-center gap-2 pl-9">
-            <input
-              type="date"
-              value={task.due_date || ''}
-              onChange={e => onUpdate(task.id, { due_date: e.target.value || null })}
-              className="text-xs text-gray-500 bg-transparent outline-none flex-shrink-0"
-            />
-            <span className={`text-xs italic flex-shrink-0 ${isUrgent ? 'text-red-500 font-medium' : 'text-amber-600'}`}>
+            <input type="date" value={task.due_date || ''} onChange={e => onUpdate(task.id, { due_date: e.target.value || null })}
+              className="text-xs bg-transparent outline-none flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
+            <span className="text-xs italic flex-shrink-0" style={{ color: isUrgent ? 'var(--urgent-today-text)' : 'var(--morandi-sand-text)' }}>
               {showsAs}
             </span>
-            <select
-              value={task.progress}
-              onChange={e => onUpdate(task.id, { progress: e.target.value as Progress })}
-              className={`text-xs px-2 py-1 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 ${getProgressColor(task.progress)}`}
-            >
+            <select value={task.progress} onChange={e => onUpdate(task.id, { progress: e.target.value as Progress })}
+              className="text-xs px-2 py-1 rounded-full border-0 outline-none cursor-pointer flex-shrink-0"
+              style={{ background: progressStyle.bg, color: progressStyle.text }}>
               {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
-
             <div className="flex items-center gap-2 ml-auto">
-              <button
-                onClick={() => setShowNotes(s => !s)}
-                className={`p-1.5 rounded-lg transition-colors ${hasNotes ? 'text-pink-500' : 'text-pink-300'}`}
-                title="Notes"
-              >
+              <button onClick={() => setShowNotes(s => !s)}
+                className="p-1.5 rounded-lg transition-colors"
+                style={{ color: hasNotes ? 'var(--morandi-pink-text)' : 'var(--text-muted)' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
               </button>
-
               <div className="relative">
-                <button onClick={() => setShowMove(s => !s)} className="text-pink-300 p-1.5 rounded-lg" title="Move to...">
+                <button onClick={() => setShowMove(s => !s)} className="text-pink-300 p-1.5 rounded-lg"
+                  style={{ color: 'var(--text-muted)' }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
+                    <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
                   </svg>
                 </button>
                 {showMove && (
-                  <div className="absolute right-0 top-8 bg-white rounded-xl shadow-xl border border-pink-100 w-48 z-50 max-h-48 overflow-y-auto">
-                    <p className="text-xs font-semibold text-pink-500 px-3 pt-2 pb-1">Move to...</p>
+                  <div className="absolute right-0 top-8 rounded-xl shadow-xl border w-48 z-50 max-h-48 overflow-y-auto"
+                    style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                    <p className="text-xs font-medium px-3 pt-2 pb-1" style={{ color: 'var(--morandi-pink-text)' }}>Move to...</p>
                     {SECTIONS.filter(s => s.id !== currentSectionId).map(s => (
-                      <button
-                        key={s.id}
-                        onClick={() => { onMove(task.id, s.id); setShowMove(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-pink-50 transition-colors"
-                      >{s.name}</button>
+                      <button key={s.id} onClick={() => { onMove(task.id, s.id); setShowMove(false) }}
+                        className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-pink-50"
+                        style={{ color: 'var(--text-primary)' }}>{s.name}</button>
                     ))}
                   </div>
                 )}
@@ -138,22 +129,21 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
             </div>
           </div>
         </div>
-        {showNotes && (
-          <NotesPanel task={task} onUpdate={onUpdate} onClose={() => setShowNotes(false)} />
-        )}
+        {showNotes && <NotesPanel task={task} onUpdate={onUpdate} onClose={() => setShowNotes(false)} />}
       </>
     )
   }
 
-  // Desktop layout
+  // ===== DESKTOP =====
   return (
     <>
-      <div
-        ref={setNodeRef}
-        style={style}
-        className={`flex items-center gap-2 px-3 py-2 border-b border-pink-50 hover:bg-pink-50/50 group transition-colors ${rowBg}`}
-      >
-        <button {...attributes} {...listeners} className="drag-handle text-pink-200 hover:text-pink-400 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div ref={setNodeRef} style={{ ...style, background: rowBg }}
+        className="flex items-center gap-2 px-3 py-2 border-b group transition-colors hover:bg-pink-50/20"
+        style2={{ borderColor: 'var(--divider)' }}>
+        {/* Drag handle */}
+        <button {...attributes} {...listeners}
+          className="drag-handle flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: 'var(--text-muted)' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="9" cy="7" r="1.5"/><circle cx="15" cy="7" r="1.5"/>
             <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
@@ -161,106 +151,104 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
           </svg>
         </button>
 
-        <button onClick={handleCheck} className="w-4 h-4 rounded-full border border-pink-300 hover:border-pink-500 hover:bg-pink-100 flex-shrink-0 transition-colors" />
+        {/* Check */}
+        <button onClick={() => onArchive(task.id)}
+          className="w-4 h-4 rounded-full border flex-shrink-0 transition-colors hover:bg-pink-50"
+          style={{ borderColor: 'var(--morandi-pink-text)' }} />
 
-        <input
-          value={task.task}
-          onChange={e => onUpdate(task.id, { task: e.target.value })}
-          placeholder="Task..."
-          className="flex-1 bg-transparent text-sm text-gray-700 outline-none placeholder-pink-200 min-w-0"
-        />
+        {/* Task name */}
+        <input value={task.task} onChange={e => onUpdate(task.id, { task: e.target.value })}
+          placeholder="Task..." className="flex-1 bg-transparent text-sm outline-none min-w-0"
+          style={{ color: 'var(--text-primary)' }} />
 
-        <input
-          type="date"
-          value={task.due_date || ''}
-          onChange={e => onUpdate(task.id, { due_date: e.target.value || null })}
-          className="text-xs text-gray-500 bg-transparent outline-none w-28 flex-shrink-0"
-        />
+        {/* Due date */}
+        <input type="date" value={task.due_date || ''} onChange={e => onUpdate(task.id, { due_date: e.target.value || null })}
+          className="text-xs bg-transparent outline-none w-28 flex-shrink-0"
+          style={{ color: 'var(--text-secondary)' }} />
 
-        <span className={`text-xs italic w-20 flex-shrink-0 ${isUrgent ? 'text-red-500 font-medium' : 'text-amber-600'}`}>
+        {/* Shows As */}
+        <span className="text-xs italic w-20 flex-shrink-0"
+          style={{ color: isUrgent ? 'var(--urgent-today-text)' : 'var(--morandi-sand-text)' }}>
           {showsAs}
         </span>
 
-        <select
-          value={task.progress}
-          onChange={e => onUpdate(task.id, { progress: e.target.value as Progress })}
-          className={`text-xs px-2 py-1 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 ${getProgressColor(task.progress)}`}
-        >
+        {/* Progress */}
+        <select value={task.progress} onChange={e => onUpdate(task.id, { progress: e.target.value as Progress })}
+          className="text-xs px-2 py-1 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 w-20"
+          style={{ background: progressStyle.bg, color: progressStyle.text }}>
           {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
 
+        {/* Actions */}
         <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Reminder */}
           <div className="relative">
-            <button
-              onClick={() => setShowReminder(s => !s)}
-              className={`p-1 transition-colors ${task.reminder_days != null ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500 opacity-0 group-hover:opacity-100'}`}
-              title={task.reminder_days != null ? `Remind ${task.reminder_days} days before` : 'Set reminder'}
-            >
+            <button onClick={() => setShowReminder(s => !s)}
+              className="p-1 transition-colors"
+              style={{ color: task.reminder_days != null ? 'var(--morandi-pink-text)' : 'var(--text-muted)', opacity: task.reminder_days != null ? 1 : 0, }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = task.reminder_days != null ? '1' : '0'}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
             </button>
             {showReminder && (
-              <div className="absolute right-0 top-6 bg-white rounded-xl shadow-xl border border-pink-100 p-3 z-50 w-48">
-                <p className="text-xs font-semibold text-pink-500 mb-2">⏰ Remind me when...</p>
+              <div className="absolute right-0 top-6 rounded-xl shadow-xl border p-3 z-50 w-48"
+                style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--morandi-pink-text)' }}>Remind me when...</p>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    max="60"
-                    value={task.reminder_days ?? ''}
+                  <input type="number" min="1" max="60" value={task.reminder_days ?? ''}
                     placeholder="2"
-                    onChange={e => {
-                      const val = e.target.value === '' ? null : parseInt(e.target.value)
-                      onUpdate(task.id, { reminder_days: val })
-                    }}
-                    className="w-14 text-sm border border-pink-200 rounded-lg px-2 py-1 outline-none focus:border-pink-400"
-                  />
-                  <span className="text-xs text-gray-500">days before due</span>
+                    onChange={e => onUpdate(task.id, { reminder_days: e.target.value === '' ? null : parseInt(e.target.value) })}
+                    className="w-14 text-sm px-2 py-1 rounded-lg outline-none"
+                    style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>days before</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">Leave empty for default (2 days)</p>
-                <button
-                  onClick={() => setShowReminder(false)}
-                  className="mt-2 w-full text-xs bg-pink-500 text-white rounded-lg py-1 hover:bg-pink-600 transition-colors"
-                >Done</button>
+                <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Default: 2 days</p>
+                <button onClick={() => setShowReminder(false)}
+                  className="mt-2 w-full text-xs py-1 rounded-lg text-white" style={{ background: 'var(--morandi-pink-text)' }}>Done</button>
               </div>
             )}
           </div>
 
-          <button
-            onClick={() => setShowNotes(s => !s)}
-            className={`p-1 transition-colors ${hasNotes ? 'text-pink-500' : 'text-pink-300 hover:text-pink-500 opacity-0 group-hover:opacity-100'}`}
-            title="Notes"
-          >
+          {/* Notes */}
+          <button onClick={() => setShowNotes(s => !s)}
+            className="p-1 transition-colors"
+            style={{ color: hasNotes ? 'var(--morandi-pink-text)' : 'var(--text-muted)', opacity: hasNotes ? 1 : 0 }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = hasNotes ? '1' : '0'}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
             </svg>
           </button>
 
+          {/* Move */}
           <div className="relative">
-            <button onClick={() => setShowMove(s => !s)} className="text-pink-300 hover:text-pink-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Move to...">
+            <button onClick={() => setShowMove(s => !s)}
+              className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ color: 'var(--text-muted)' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
+                <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/>
+                <line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
               </svg>
             </button>
             {showMove && (
-              <div className="absolute right-0 top-6 bg-white rounded-xl shadow-xl border border-pink-100 w-48 z-50 animate-slideIn max-h-48 overflow-y-auto">
-                <p className="text-xs font-semibold text-pink-500 px-3 pt-2 pb-1">Move to...</p>
+              <div className="absolute right-0 top-6 rounded-xl shadow-xl border w-48 z-50 max-h-48 overflow-y-auto"
+                style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                <p className="text-xs font-medium px-3 pt-2 pb-1" style={{ color: 'var(--morandi-pink-text)' }}>Move to...</p>
                 {SECTIONS.filter(s => s.id !== currentSectionId).map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => { onMove(task.id, s.id); setShowMove(false) }}
-                    className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-pink-50 transition-colors"
-                  >{s.name}</button>
+                  <button key={s.id} onClick={() => { onMove(task.id, s.id); setShowMove(false) }}
+                    className="w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-pink-50"
+                    style={{ color: 'var(--text-primary)' }}>{s.name}</button>
                 ))}
               </div>
             )}
           </div>
         </div>
       </div>
-      {showNotes && (
-        <NotesPanel task={task} onUpdate={onUpdate} onClose={() => setShowNotes(false)} />
-      )}
+      {showNotes && <NotesPanel task={task} onUpdate={onUpdate} onClose={() => setShowNotes(false)} />}
     </>
   )
 }
