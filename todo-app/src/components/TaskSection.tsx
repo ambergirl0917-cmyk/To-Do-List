@@ -24,11 +24,8 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
 
   const fetchTasks = useCallback(async () => {
     const { data } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('section_id', sectionId)
-      .eq('is_archived', false)
+      .from('tasks').select('*')
+      .eq('user_id', user.id).eq('section_id', sectionId).eq('is_archived', false)
       .order('position', { ascending: true })
     if (data) setTasks(data)
     setLoading(false)
@@ -37,17 +34,10 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
   const addTask = async () => {
-    const position = tasks.length
     const { data } = await supabase.from('tasks').insert({
-      user_id: user.id,
-      section_id: sectionId,
-      task: '',
-      notes: '',
-      due_date: null,
-      progress: '0%' as Progress,
-      position,
-      is_archived: false,
-      checklist: [],
+      user_id: user.id, section_id: sectionId, task: '', notes: '',
+      due_date: null, progress: '0%' as Progress, position: tasks.length,
+      is_archived: false, checklist: [],
     }).select().single()
     if (data) setTasks(prev => [...prev, data])
   }
@@ -94,31 +84,33 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
     ? tasks.filter(t => t.task?.toLowerCase().includes(searchQuery.toLowerCase()) || t.notes?.toLowerCase().includes(searchQuery.toLowerCase()))
     : tasks
 
-  const headerStyle = color ? { borderTopColor: color, borderTopWidth: '3px' } : {}
+  const headerAccent = color || 'var(--morandi-pink-text)'
 
   return (
-    <div className="bg-white rounded-xl border border-pink-100 shadow-sm">
-      <div className="flex items-center justify-between px-4 py-2.5 bg-pink-50 border-b border-pink-100 rounded-t-xl" style={headerStyle}>
+    <div className="rounded-xl border shadow-sm overflow-visible" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)', borderTop: `3px solid ${headerAccent}` }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b rounded-t-xl" style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
         <div className="flex items-center gap-2">
           {color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />}
-          <span className="text-sm font-semibold text-pink-700">{sectionName}</span>
-          <span className="text-xs text-pink-400">({filteredTasks.length})</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{sectionName}</span>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>({filteredTasks.length})</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={sortByDate} className="text-xs text-pink-400 hover:text-pink-600 flex items-center gap-1 transition-colors">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button onClick={sortByDate} className="text-xs flex items-center gap-1 transition-colors" style={{ color: 'var(--text-muted)' }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
               <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
             </svg>
-            Sort by date
+            Sort
           </button>
-          <button onClick={addTask} className="text-xs bg-pink-500 text-white px-2.5 py-1 rounded-lg hover:bg-pink-600 transition-colors flex items-center gap-1">
-            <span>+</span> Add
+          <button onClick={addTask} className="text-xs px-2.5 py-1 rounded-lg transition-colors text-white flex items-center gap-1" style={{ background: 'var(--morandi-pink-text)' }}>
+            + Add
           </button>
         </div>
       </div>
 
-      <div className="flex items-center px-3 py-1 bg-white border-b border-pink-50 text-xs text-pink-400 font-medium">
+      {/* Column headers */}
+      <div className="flex items-center px-3 py-1.5 border-b text-xs font-medium" style={{ borderColor: 'var(--divider)', color: 'var(--text-muted)', background: 'var(--card-bg)' }}>
         <div className="w-4 flex-shrink-0 mr-2" />
         <div className="w-4 flex-shrink-0 mr-2" />
         <div className="flex-1">Task</div>
@@ -129,26 +121,19 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
       </div>
 
       {loading ? (
-        <div className="px-4 py-6 text-center text-pink-300 text-sm">Loading...</div>
+        <div className="px-4 py-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>Loading...</div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={filteredTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
             {filteredTasks.map(task => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                onUpdate={updateTask}
-                onArchive={archiveTask}
-                onMove={moveTask}
-                currentSectionId={sectionId}
-              />
+              <TaskRow key={task.id} task={task} onUpdate={updateTask} onArchive={archiveTask} onMove={moveTask} currentSectionId={sectionId} />
             ))}
           </SortableContext>
         </DndContext>
       )}
 
-      <button onClick={addTask} className="w-full text-left px-4 py-2 text-xs text-pink-300 hover:text-pink-500 hover:bg-pink-50 transition-colors rounded-b-xl flex items-center gap-1">
-        <span>+</span> Add task
+      <button onClick={addTask} className="w-full text-left px-4 py-2 text-xs transition-colors rounded-b-xl flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+        + Add task
       </button>
     </div>
   )
