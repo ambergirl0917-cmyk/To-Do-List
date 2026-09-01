@@ -38,6 +38,20 @@ export interface Section {
 export interface WeeklySlot {
   id: string
   user_id: string
+  day: string
+  time_slot: string
+  task: string
+  notes: string
+  date: string | null
+  progress: Progress
+  position: number
+  week_number: number
+  checklist: ChecklistItem[]
+}
+
+export interface PlannerBlock {
+  id: string
+  user_id: string
   date: string
   title: string
   category: string
