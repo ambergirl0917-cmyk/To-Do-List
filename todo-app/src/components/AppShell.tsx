@@ -1,4 +1,3 @@
-import HomePage from './pages/HomePage'
 'use client'
 import { useState, useEffect } from 'react'
 import type { User } from '@supabase/supabase-js'
@@ -6,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import MobileNav from './MobileNav'
+import HomePage from './pages/HomePage'
 import OverviewPage from './pages/OverviewPage'
 import SubjectsPage from './pages/SubjectsPage'
 import IBCorePage from './pages/IBCorePage'
@@ -16,10 +16,9 @@ import WeeklyPlannerPage from './pages/WeeklyPlannerPage'
 import DeadlinesPage from './pages/DeadlinesPage'
 import ArchivePage from './pages/ArchivePage'
 import SettingsPage from './pages/SettingsPage'
-import SummerPlanPage from './pages/SummerPlanPage'
 import { Task, Deadline } from '@/lib/types'
 
-export type PageId = 'home' | 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings' | 'summer'
+export type PageId = 'home' | 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings'
 
 interface AppShellProps { user: User }
 
@@ -44,11 +43,10 @@ const PAGE_LABELS: Record<PageId, string> = {
   deadlines: 'Deadlines',
   archive: 'Archive',
   settings: 'Settings',
-  summer: 'Summer Plan',
 }
 
 export default function AppShell({ user }: AppShellProps) {
-  const [currentPage, setCurrentPage] = useState<PageId>('overview')
+  const [currentPage, setCurrentPage] = useState<PageId>('home')
   const [mobileShowHome, setMobileShowHome] = useState(true)
   const [isMobile, setIsMobile] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -142,7 +140,7 @@ export default function AppShell({ user }: AppShellProps) {
   const renderPage = () => {
     const props = { user, onTaskChange: fetchUrgentTasks, focusMode, searchQuery }
     switch (currentPage) {
-      case 'home': return <OverviewPage {...props} />
+      case 'home': return <HomePage user={user} onTaskChange={fetchUrgentTasks} />
       case 'overview': return <OverviewPage {...props} />
       case 'subjects': return <SubjectsPage {...props} />
       case 'ibcore': return <IBCorePage {...props} />
@@ -153,8 +151,7 @@ export default function AppShell({ user }: AppShellProps) {
       case 'deadlines': return <DeadlinesPage user={user} onDeadlineChange={fetchUrgentDeadlines} />
       case 'archive': return <ArchivePage user={user} />
       case 'settings': return <SettingsPage user={user} />
-      case 'summer': return <SummerPlanPage user={user} />
-      default: return <OverviewPage {...props} />
+      default: return <HomePage user={user} onTaskChange={fetchUrgentTasks} />
     }
   }
 
