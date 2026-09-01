@@ -23,7 +23,6 @@ const NAV_ITEMS = [
     { id: 'college' as PageId, label: 'College App', icon: 'ti-school' },
     { id: 'planner' as PageId, label: 'Planner', icon: 'ti-calendar' },
     { id: 'deadlines' as PageId, label: 'Deadlines', icon: 'ti-calendar-event' },
-    { id: 'summer' as PageId, label: 'Summer Plan', icon: 'ti-sun' },
   ]},
   { section: 'More', items: [
     { id: 'archive' as PageId, label: 'Archive', icon: 'ti-archive' },
@@ -33,7 +32,6 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const isActive = (id: PageId) => currentPage === id
-
   return (
     <>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
