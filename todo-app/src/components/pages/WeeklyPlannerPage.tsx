@@ -276,3 +276,132 @@ export default function WeeklyPlannerPage({ user, totalWeeks: initialWeeks = 3 }
         <div className="flex items-center gap-2 flex-wrap">
           {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
             <button key={w} onClick={() => setActiveWeek(w)}
+              className="text-xs px-3 py-1.5 rounded-lg transition-colors"
+              style={{ background: activeWeek === w ? 'var(--morandi-pink-text)' : 'var(--morandi-pink)', color: activeWeek === w ? 'white' : 'var(--morandi-pink-text)' }}>
+              Week {w}
+            </button>
+          ))}
+          {!showResetConfirm ? (
+            <button onClick={() => setShowResetConfirm(true)}
+              className="text-xs px-3 py-1.5 rounded-lg border"
+              style={{ borderColor: '#E8C0C0', color: '#C07070' }}>
+              Reset week
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className="text-xs" style={{ color: '#C07070' }}>Sure?</span>
+              <button onClick={resetWeek} className="text-xs px-2 py-1 rounded-lg text-white" style={{ background: '#C07070' }}>Yes</button>
+              <button onClick={() => setShowResetConfirm(false)} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--morandi-linen)', color: 'var(--text-secondary)' }}>No</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        {DAYS.map(day => {
+          const daySlots = weekSlots
+            .filter(s => s.day === day)
+            .sort((a, b) => {
+              const ma = timeToMinutes(a.time_slot), mb = timeToMinutes(b.time_slot)
+              if (ma === -1) return 1; if (mb === -1) return -1
+              return ma - mb
+            })
+          const noteKey = `${activeWeek}-${day}`
+          return (
+            <div key={day} className="rounded-xl border overflow-visible" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+              <div className="px-4 pt-3 pb-2 border-b" style={{ borderColor: 'var(--divider)' }}>
+                <input
+                  value={dayNotes[noteKey] || ''}
+                  onChange={e => updateDayNote(activeWeek, day, e.target.value)}
+                  placeholder={`Notes for ${day}...`}
+                  className="w-full text-xs rounded-lg px-3 py-1.5 outline-none"
+                  style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)', border: '0.5px solid var(--card-border)' }}
+                />
+              </div>
+              <div className="px-4 py-2.5 flex items-center justify-between border-b" style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{day}</span>
+                <button onClick={() => addSlot(day, activeWeek)} className="text-xs px-2.5 py-1 rounded-lg text-white" style={{ background: 'var(--morandi-pink-text)' }}>+ Add</button>
+              </div>
+              <div>
+                {daySlots.map(slot => {
+                  const isDone = slot.progress === '100%'
+                  return (
+                    <div key={slot.id}>
+                      <div className="flex items-center gap-2 px-3 py-2.5 group border-b" style={{ borderColor: 'var(--divider)', background: isDone ? '#F4F8F4' : undefined }}>
+                        <div className="flex-shrink-0 w-5 flex items-center justify-center">
+                          {isDone ? (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ color: 'var(--morandi-sage-text)' }}>
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          ) : <div className="w-3.5 h-3.5" />}
+                        </div>
+                        <TimeInput value={slot.time_slot} onChange={v => updateSlot(slot.id, { time_slot: v })} />
+                        <input
+                          value={slot.task}
+                          onChange={e => updateSlot(slot.id, { task: e.target.value })}
+                          placeholder="Task..."
+                          className="flex-1 text-sm bg-transparent outline-none min-w-0"
+                          style={{ color: isDone ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: isDone ? 'line-through' : 'none' }}
+                        />
+                        <select
+                          value={slot.progress}
+                          onChange={e => updateSlot(slot.id, { progress: e.target.value as Progress })}
+                          className="text-xs px-2 py-0.5 rounded-full border-0 outline-none cursor-pointer flex-shrink-0"
+                          style={{ background: isDone ? 'var(--morandi-sage)' : 'var(--morandi-pink)', color: isDone ? 'var(--morandi-sage-text)' : 'var(--morandi-pink-text)' }}
+                        >
+                          {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setOpenNotesId(openNotesId === slot.id ? null : slot.id)} className="p-1" style={{ color: openNotesId === slot.id ? 'var(--morandi-pink-text)' : 'var(--text-muted)' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <polyline points="14 2 14 8 20 8"/>
+                              <line x1="16" y1="13" x2="8" y2="13"/>
+                              <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                          </button>
+                          <div className="relative">
+                            <button onClick={() => setShowMoveMenu(showMoveMenu === slot.id ? null : slot.id)} className="p1" style={{ color: 'var(--text-muted)' }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="5 9 2 12 5 15"/>
+                                <polyline points="9 5 12 2 15 5"/>
+                                <line x1="2" y1="12" x2="22" y2="12"/>
+                                <line x1="12" y1="2" x2="12" y2="22"/>
+                              </svg>
+                            </button>
+                            {showMoveMenu === slot.id && (
+                              <div className="absolute right-0 top-6 rounded-xl shadow-xl border w-48 z-50 max-h-64 overflow-y-auto" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                                <p className="text-xs font-medium px-3 pt-2 pb-1" style={{ color: 'var(--morandi-pink-text)' }}>Move to...</p>
+                                {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => (
+                                  <div key={w}>
+                                    <p className="text-xs px-3 py-1" style={{ color: 'var(--text-muted)', background: 'var(--section-header)' }}>Week {w}</p>
+                                    {DAYS.filter(d => !(d === day && w === activeWeek)).map(d => (
+                                      <button key={d} onClick={() => moveSlot(slot.id, d, w)} className="w-full text-left px-3 py-1.5 text-xs hover:bg-pink-50" style={{ color: 'var(--text-primary)' }}>{d}</button>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <button onClick={() => deleteSlot(slot.id)} className="text-lg leading-none p-1" style={{ color: 'var(--text-muted)' }}>&times;</button>
+                        </div>
+                      </div>
+                      {openNotesId === slot.id && (
+                        <div className="px-3 pb-2">
+                          <SlotNotesPanel slot={slot} onUpdate={updateSlot} onClose={() => setOpenNotesId(null)} />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {daySlots.length === 0 && (
+                  <div className="px-4 py-3 text-xs italic" style={{ color: 'var(--text-muted)' }}>No slots yet</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
