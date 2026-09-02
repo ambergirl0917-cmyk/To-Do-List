@@ -84,40 +84,37 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
     ? tasks.filter(t => t.task?.toLowerCase().includes(searchQuery.toLowerCase()) || t.notes?.toLowerCase().includes(searchQuery.toLowerCase()))
     : tasks
 
-  const headerAccent = color || 'var(--morandi-pink-text)'
-
   return (
-    <div className="rounded-xl border shadow-sm overflow-visible" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)', borderTop: `3px solid ${headerAccent}` }}>
+    <div className="rounded-xl border overflow-visible"
+      style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b rounded-t-xl" style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
+      <div className="flex items-center justify-between px-4 py-3 border-b"
+        style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
         <div className="flex items-center gap-2">
-          {color && <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />}
+          {color && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />}
           <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{sectionName}</span>
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>({filteredTasks.length})</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={sortByDate} className="text-xs flex items-center gap-1 transition-colors" style={{ color: 'var(--text-muted)' }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-            Sort
-          </button>
-          <button onClick={addTask} className="text-xs px-2.5 py-1 rounded-lg transition-colors text-white flex items-center gap-1" style={{ background: 'var(--morandi-pink-text)' }}>
+          <button onClick={sortByDate} className="text-xs" style={{ color: 'var(--text-muted)' }}>Sort</button>
+          <button onClick={addTask} className="text-xs px-3 py-1.5 rounded-lg"
+            style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
             + Add
           </button>
         </div>
       </div>
 
       {/* Column headers */}
-      <div className="flex items-center px-3 py-1.5 border-b text-xs font-medium" style={{ borderColor: 'var(--divider)', color: 'var(--text-muted)', background: 'var(--card-bg)' }}>
+      <div className="flex items-center px-4 py-1.5 border-b text-xs"
+        style={{ borderColor: 'var(--divider)', color: 'var(--text-muted)', background: 'var(--card-bg)' }}>
         <div className="w-4 flex-shrink-0 mr-2" />
         <div className="w-4 flex-shrink-0 mr-2" />
         <div className="flex-1">Task</div>
         <div className="w-28 flex-shrink-0">Due Date</div>
         <div className="w-20 flex-shrink-0">Shows As</div>
-        <div className="w-20 flex-shrink-0">Progress</div>
-        <div className="w-16 flex-shrink-0" />
+        <div className="w-24 flex-shrink-0">Progress</div>
+        <div className="w-20 flex-shrink-0" />
       </div>
 
       {loading ? (
@@ -132,7 +129,8 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
         </DndContext>
       )}
 
-      <button onClick={addTask} className="w-full text-left px-4 py-2 text-xs transition-colors rounded-b-xl flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+      <button onClick={addTask} className="w-full text-left px-4 py-2.5 text-sm rounded-b-xl"
+        style={{ color: 'var(--text-muted)' }}>
         + Add task
       </button>
     </div>
