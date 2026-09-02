@@ -2,8 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { Task } from '@/lib/types'
-import { Deadline } from '@/lib/types'
+import { Task, Deadline } from '@/lib/types'
 
 interface TopBarProps {
   user: User
@@ -34,17 +33,25 @@ export default function TopBar({
 
   const handleSignOut = async () => { await supabase.auth.signOut() }
 
-  // Get today and this week
   const todayStr = new Date().toISOString().split('T')[0]
-  const weekEnd = new Date()
-  weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()))
-  const weekEndStr = weekEnd.toISOString().split('T')[0]
 
-  const todayDeadlines = urgentDeadlines.filter(d => d.due_date === todayStr)
-  const weekDeadlines = [...urgentDeadlines, ...upcomingDeadlines].filter(d => d.due_date && d.due_date > todayStr && d.due_date <= weekEndStr)
+  // Get Monday to Sunday of current week
+  const now = new Date()
+  const day = now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
+  monday.setHours(0, 0, 0, 0)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+  const mondayStr = monday.toISOString().split('T')[0]
+  const sundayStr = sunday.toISOString().split('T')[0]
 
   const totalUrgent = urgentTasks.length + urgentDeadlines.length
-  const totalWeek = upcomingTasks.length + weekDeadlines.length
+  const totalWeek = upcomingTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr).length +
+    upcomingDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr).length +
+    urgentTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr).length +
+    urgentDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr).length
 
   // Close on outside click
   useEffect(() => {
@@ -57,12 +64,12 @@ export default function TopBar({
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
-  // All items sorted by date for popup
+  // All urgent items sorted by date
   const allUrgentItems = [
     ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isToday: t.due_date === todayStr })),
     ...urgentDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isToday: d.due_date === todayStr })),
-    ...weekDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isToday: false })),
     ...upcomingTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isToday: false })),
+    ...upcomingDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isToday: false })),
   ].sort((a, b) => {
     if (!a.date) return 1
     if (!b.date) return -1
@@ -77,41 +84,41 @@ export default function TopBar({
   }
 
   return (
-    <div className="flex-shrink-0 bg-white border-b flex items-center px-4 gap-3" style={{ borderColor: 'var(--card-border)', height: '48px' }}>
+    <div className="flex-shrink-0 bg-white border-b flex items-center px-4 gap-3"
+      style={{ borderColor: 'var(--card-border)', height: '48px' }}>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
-      <button onClick={onToggleSidebar} className="p-1 rounded-lg transition-colors hover:bg-gray-50" style={{ color: 'var(--text-muted)' }}>
+      <button onClick={onToggleSidebar} className="p-1 rounded-lg" style={{ color: 'var(--text-muted)' }}>
         <i className="ti ti-menu-2" style={{ fontSize: '17px' }} />
       </button>
 
-      <span className="text-sm font-medium hidden sm:block flex-shrink-0" style={{ color: 'var(--text-primary)' }}>My To-Do List</span>
+      <span className="text-sm font-medium hidden sm:block flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
+        My To-Do List
+      </span>
 
       {/* Search */}
-      <div className={`${showSearch ? 'flex' : 'hidden sm:flex'} flex-1 items-center rounded-lg px-3 py-1.5 gap-2 max-w-xs`} style={{ background: 'var(--morandi-pink)', opacity: 0.7 }}>
+      <div className={`${showSearch ? 'flex' : 'hidden sm:flex'} flex-1 items-center rounded-lg px-3 py-1.5 gap-2 max-w-xs`}
+        style={{ background: 'var(--morandi-pink)' }}>
         <i className="ti ti-search" style={{ fontSize: '13px', color: 'var(--morandi-pink-text)' }} />
-        <input
-          value={searchQuery}
-          onChange={e => onSearchChange(e.target.value)}
+        <input value={searchQuery} onChange={e => onSearchChange(e.target.value)}
           placeholder="Search tasks..."
           className="bg-transparent text-sm outline-none flex-1 min-w-0"
-          style={{ color: 'var(--text-primary)' }}
-        />
+          style={{ color: 'var(--text-primary)' }} />
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
         {/* Quick add */}
-        <button
-          onClick={onQuickAdd}
-          className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors"
-          style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}
-        >
+        <button onClick={onQuickAdd}
+          className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+          style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
           <i className="ti ti-plus" style={{ fontSize: '12px' }} />
           Quick add
         </button>
 
         {/* This week pill */}
         {totalWeek > 0 && (
-          <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: 'var(--morandi-blue)', color: 'var(--morandi-blue-text)' }}>
+          <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+            style={{ background: 'var(--morandi-blue)', color: 'var(--morandi-blue-text)' }}>
             <i className="ti ti-calendar-week" style={{ fontSize: '12px' }} />
             {totalWeek} this week
           </div>
@@ -119,11 +126,12 @@ export default function TopBar({
 
         {/* Urgent pill */}
         <div className="relative" ref={urgentRef}>
-          <button
-            onClick={() => setShowUrgent(s => !s)}
+          <button onClick={() => setShowUrgent(s => !s)}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors"
-            style={{ background: totalUrgent > 0 ? 'var(--urgent-today-bg)' : 'var(--morandi-sand)', color: totalUrgent > 0 ? 'var(--urgent-today-text)' : 'var(--morandi-sand-text)' }}
-          >
+            style={{
+              background: totalUrgent > 0 ? 'var(--urgent-today-bg)' : 'var(--morandi-sand)',
+              color: totalUrgent > 0 ? 'var(--urgent-today-text)' : 'var(--morandi-sand-text)'
+            }}>
             {totalUrgent > 0 && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />}
             <i className="ti ti-alert-circle" style={{ fontSize: '12px' }} />
             {totalUrgent > 0 ? `${totalUrgent} urgent` : 'All clear'}
@@ -141,12 +149,14 @@ export default function TopBar({
                     <div key={`${item.type}-${item.id}-${i}`}
                       className="flex items-center gap-2.5 px-3 py-2 mx-1.5 my-0.5 rounded-lg"
                       style={{ background: item.isToday ? 'var(--urgent-today-bg)' : 'var(--urgent-week-bg)' }}>
-                      <i
-                        className={item.type === 'deadline' ? 'ti ti-calendar-event' : 'ti ti-circle-check'}
-                        style={{ fontSize: '13px', color: item.isToday ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)', flexShrink: 0 }}
-                      />
-                      <span className="text-sm flex-1 truncate" style={{ color: item.isToday ? '#8A6060' : '#786050' }}>{item.title}</span>
-                      <span className="text-xs font-medium flex-shrink-0" style={{ color: item.isToday ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)' }}>
+                      <i className={item.type === 'deadline' ? 'ti ti-calendar-event' : 'ti ti-circle-check'}
+                        style={{ fontSize: '13px', color: item.isToday ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)', flexShrink: 0 }} />
+                      <span className="text-sm flex-1 truncate"
+                        style={{ color: item.isToday ? '#8A6060' : '#786050' }}>
+                        {item.title}
+                      </span>
+                      <span className="text-xs font-medium flex-shrink-0"
+                        style={{ color: item.isToday ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)' }}>
                         {formatDate(item.date)}
                       </span>
                     </div>
@@ -159,19 +169,24 @@ export default function TopBar({
 
         {/* Avatar */}
         <div className="relative">
-          <button onClick={() => setShowUserMenu(s => !s)} className="w-7 h-7 rounded-full overflow-hidden border-2 transition-colors" style={{ borderColor: 'var(--morandi-pink)' }}>
+          <button onClick={() => setShowUserMenu(s => !s)}
+            className="w-7 h-7 rounded-full overflow-hidden border-2"
+            style={{ borderColor: 'var(--morandi-pink)' }}>
             {avatar
               ? <img src={avatar} alt={name} className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>{initials}</div>
+              : <div className="w-full h-full flex items-center justify-center text-xs font-bold"
+                  style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>{initials}</div>
             }
           </button>
           {showUserMenu && (
-            <div className="absolute right-0 top-9 rounded-xl shadow-lg border py-2 w-44 z-50" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+            <div className="absolute right-0 top-9 rounded-xl shadow-lg border py-2 w-44 z-50"
+              style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
               <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--divider)' }}>
                 <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{name}</p>
                 <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
               </div>
-              <button onClick={handleSignOut} className="w-full text-left px-3 py-2 text-sm transition-colors hover:bg-red-50 text-red-400">
+              <button onClick={handleSignOut}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 text-red-400">
                 Sign out
               </button>
             </div>
