@@ -285,15 +285,21 @@ function QuickNote({ user }: { user: User }) {
   if (!sel || !sel.rangeCount) return
   const range = sel.getRangeAt(0)
   range.deleteContents()
-  const text = document.createTextNode('☐ ')
-  range.insertNode(text)
-  range.setStartAfter(text)
-  range.setEndAfter(text)
+  const span = document.createElement('span')
+  span.innerHTML = '☐ '
+  span.style.cursor = 'pointer'
+  span.onclick = (e) => {
+    const el = e.target as HTMLSpanElement
+    el.innerHTML = el.innerHTML.startsWith('☑') ? '☐ ' : '☑ '
+    handleInput()
+  }
+  range.insertNode(span)
+  range.setStartAfter(span)
+  range.setEndAfter(span)
   sel.removeAllRanges()
   sel.addRange(range)
   handleInput()
 }
-
   const HIGHLIGHTS = [
     { color: '#FAE4EC', label: 'Pink' },
     { color: '#D8E8F8', label: 'Blue' },
