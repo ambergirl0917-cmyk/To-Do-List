@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { Task, PlannerBlock, Progress } from '@/lib/types'
@@ -47,7 +47,6 @@ function Timer() {
   }, [running])
 
   const format = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
-
   const loadPreset = (p: TimerPreset) => { setActivePreset(p); setSecondsLeft(p.minutes * 60); setRunning(false) }
   const reset = () => { setRunning(false); setSecondsLeft(activePreset ? activePreset.minutes * 60 : 25 * 60) }
 
@@ -122,7 +121,6 @@ function MiniCalendar({ tasks, deadlines }: { tasks: Task[]; deadlines: any[] })
 
   const days = getDaysInMonth(currentMonth.year, currentMonth.month)
   const DAY_NAMES = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-
   const getDeadlineCount = (dateStr: string) => deadlines.filter(d => d.due_date === dateStr).length
   const getTaskCount = (dateStr: string) => tasks.filter(t => t.due_date === dateStr && !t.is_archived).length
   const getItemsForDay = (dateStr: string) => ({
@@ -141,12 +139,10 @@ function MiniCalendar({ tasks, deadlines }: { tasks: Task[]; deadlines: any[] })
           <button onClick={() => setCurrentMonth(m => { const nm = m.month + 1; return nm > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: nm } })} className="text-sm" style={{ color: 'var(--text-muted)' }}>›</button>
         </div>
       </div>
-
       <div className="grid grid-cols-7 text-center mb-1">
         {DAY_NAMES.map((d, i) => <span key={i} className="text-xs" style={{ color: 'var(--text-muted)' }}>{d}</span>)}
       </div>
-
-      <div className="grid grid-cols-7 gap-px">
+      <div className="grid grid-cols-7 gap-px relative">
         {days.map((dateStr, i) => {
           if (!dateStr) return <div key={i} />
           const dCount = getDeadlineCount(dateStr)
@@ -154,11 +150,9 @@ function MiniCalendar({ tasks, deadlines }: { tasks: Task[]; deadlines: any[] })
           const isToday = dateStr === today
           const isExpanded = expandedDate === dateStr
           const hasItems = dCount > 0 || tCount > 0
-
           return (
             <div key={dateStr} className="flex flex-col items-center">
-              <button
-                onClick={() => setExpandedDate(isExpanded ? null : dateStr)}
+              <button onClick={() => hasItems && setExpandedDate(isExpanded ? null : dateStr)}
                 className="flex flex-col items-center w-full py-0.5"
                 style={{ cursor: hasItems ? 'pointer' : 'default' }}>
                 <div className="w-6 h-6 rounded-full flex items-center justify-center"
@@ -169,44 +163,55 @@ function MiniCalendar({ tasks, deadlines }: { tasks: Task[]; deadlines: any[] })
                 </div>
                 {hasItems && (
                   <div className="flex gap-0.5 mt-0.5">
-                    {dCount > 0 && (
-                      <div className="w-3 h-3 rounded-full flex items-center justify-center" style={{ background: '#F9D0DC' }}>
-                        <span style={{ fontSize: '7px', color: '#B87080', fontWeight: '700' }}>{dCount}</span>
-                      </div>
-                    )}
-                    {tCount > 0 && (
-                      <div className="w-3 h-3 rounded-full flex items-center justify-center" style={{ background: '#DDD0BC' }}>
-                        <span style={{ fontSize: '7px', color: '#907860', fontWeight: '700' }}>{tCount}</span>
-                      </div>
-                    )}
+                    {dCount > 0 && <div className="w-3 h-3 rounded-full flex items-center justify-center" style={{ background: '#F9D0DC' }}>
+                      <span style={{ fontSize: '7px', color: '#B87080', fontWeight: '700' }}>{dCount}</span>
+                    </div>}
+                    {tCount > 0 && <div className="w-3 h-3 rounded-full flex items-center justify-center" style={{ background: '#DDD0BC' }}>
+                      <span style={{ fontSize: '7px', color: '#907860', fontWeight: '700' }}>{tCount}</span>
+                    </div>}
                   </div>
                 )}
               </button>
-
-              {/* Expanded day inline */}
-              {isExpanded && (
-                <div className="col-span-7 w-full mt-1 rounded-lg p-2 text-left"
-                  style={{ background: 'var(--morandi-pink)', position: 'absolute', left: 0, right: 0, zIndex: 10, margin: '0 16px', width: 'calc(100% - 32px)' }}>
-                  <p className="text-xs font-medium mb-1" style={{ color: 'var(--morandi-pink-text)' }}>
-                    {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  </p>
-                  {getItemsForDay(dateStr).deadlines.map((d: any) => (
-                    <div key={d.id} className="text-xs py-0.5" style={{ color: 'var(--morandi-pink-text)' }}>
-                      📅 {d.subject}: {d.task}
-                    </div>
-                  ))}
-                  {getItemsForDay(dateStr).tasks.map((t: Task) => (
-                    <div key={t.id} className="text-xs py-0.5" style={{ color: 'var(--morandi-sand-text)' }}>
-                      ✓ {t.task}
-                    </div>
-                  ))}
-                  <button onClick={() => setExpandedDate(null)} className="text-xs mt-1" style={{ color: 'var(--morandi-pink-text)', opacity: 0.6 }}>close</button>
-                </div>
-              )}
             </div>
           )
         })}
       </div>
+
+      {/* Expanded day popup */}
+      {expandedDate && (
+        <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4" onClick={() => setExpandedDate(null)}>
+          <div className="rounded-2xl shadow-2xl p-5 w-full max-w-sm" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {new Date(expandedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </span>
+              <button onClick={() => setExpandedDate(null)} className="text-xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+            </div>
+            {getItemsForDay(expandedDate).deadlines.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--morandi-pink-text)' }}>Deadlines</p>
+                {getItemsForDay(expandedDate).deadlines.map((d: any) => (
+                  <div key={d.id} className="flex items-center gap-2 py-1.5 px-3 rounded-lg mb-1" style={{ background: 'var(--morandi-pink)' }}>
+                    <i className="ti ti-calendar-event" style={{ fontSize: '12px', color: 'var(--morandi-pink-text)' }} />
+                    <span className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>{d.subject}: {d.task}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {getItemsForDay(expandedDate).tasks.length > 0 && (
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: 'var(--morandi-sand-text)' }}>Tasks due</p>
+                {getItemsForDay(expandedDate).tasks.map((t: Task) => (
+                  <div key={t.id} className="flex items-center gap-2 py-1.5 px-3 rounded-lg mb-1" style={{ background: 'var(--morandi-sand)' }}>
+                    <i className="ti ti-circle-check" style={{ fontSize: '12px', color: 'var(--morandi-sand-text)' }} />
+                    <span className="text-sm" style={{ color: 'var(--morandi-sand-text)' }}>{t.task}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-3 mt-3 pt-3" style={{ borderTop: '0.5px solid var(--divider)' }}>
         <div className="flex items-center gap-1.5">
@@ -260,6 +265,43 @@ function QuickNote({ user }: { user: User }) {
     handleInput()
   }
 
+  const insertBullet = () => {
+    editorRef.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || !sel.rangeCount) return
+    const range = sel.getRangeAt(0)
+    range.deleteContents()
+    const bullet = document.createTextNode('• ')
+    range.insertNode(bullet)
+    range.setStartAfter(bullet)
+    range.setEndAfter(bullet)
+    sel.removeAllRanges()
+    sel.addRange(range)
+    handleInput()
+  }
+
+  const insertCheckbox = () => {
+    editorRef.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || !sel.rangeCount) return
+    const range = sel.getRangeAt(0)
+    range.deleteContents()
+    const span = document.createElement('span')
+    span.innerHTML = '☐ '
+    span.style.cursor = 'pointer'
+    span.onclick = (e) => {
+      const el = e.target as HTMLSpanElement
+      el.innerHTML = el.innerHTML.startsWith('☑') ? '☐ ' : '☑ '
+      handleInput()
+    }
+    range.insertNode(span)
+    range.setStartAfter(span)
+    range.setEndAfter(span)
+    sel.removeAllRanges()
+    sel.addRange(range)
+    handleInput()
+  }
+
   const HIGHLIGHTS = [
     { color: '#FAE4EC', label: 'Pink' },
     { color: '#D8E8F8', label: 'Blue' },
@@ -269,61 +311,216 @@ function QuickNote({ user }: { user: User }) {
 
   return (
     <div className="rounded-xl border flex flex-col" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-      {/* Header */}
       <div className="px-4 py-3 border-b flex items-center justify-between flex-shrink-0"
         style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
         <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Quick note</span>
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{saved ? 'saved' : 'saving...'}</span>
       </div>
-
-      {/* Toolbar */}
-      <div className="px-3 py-2 border-b flex items-center gap-1.5 flex-wrap flex-shrink-0"
-        style={{ borderColor: 'var(--divider)' }}>
+      <div className="px-3 py-2 border-b flex items-center gap-1.5 flex-wrap flex-shrink-0" style={{ borderColor: 'var(--divider)' }}>
         <button onClick={() => format('bold')}
           className="px-2 py-1 rounded-md text-xs font-bold border transition-colors hover:bg-pink-50"
           style={{ borderColor: 'var(--card-border)', color: 'var(--text-primary)' }}>B</button>
-        <button onClick={() => format('insertUnorderedList')}
+        <button onClick={insertBullet}
           className="px-2 py-1 rounded-md text-xs border transition-colors hover:bg-pink-50"
           style={{ borderColor: 'var(--card-border)', color: 'var(--text-primary)' }}>• List</button>
-        <button onClick={() => format('insertHTML', '<input type="checkbox" style="margin-right:6px;accent-color:#9A7080;"> ')}
+        <button onClick={insertCheckbox}
           className="px-2 py-1 rounded-md text-xs border transition-colors hover:bg-pink-50"
           style={{ borderColor: 'var(--card-border)', color: 'var(--text-primary)' }}>☑ Check</button>
         <div className="flex gap-1 ml-1">
           {HIGHLIGHTS.map(h => (
             <button key={h.color} onClick={() => format('hiliteColor', h.color)}
               className="w-4 h-4 rounded-full border transition-transform hover:scale-110"
-              style={{ background: h.color, borderColor: 'var(--card-border)' }}
-              title={`Highlight ${h.label}`} />
+              style={{ background: h.color, borderColor: 'var(--card-border)' }} title={`Highlight ${h.label}`} />
           ))}
           <button onClick={() => format('hiliteColor', 'transparent')}
-            className="w-4 h-4 rounded-full border transition-transform hover:scale-110 flex items-center justify-center"
-            style={{ borderColor: 'var(--card-border)', background: 'white' }}
-            title="Remove highlight">
+            className="w-4 h-4 rounded-full border flex items-center justify-center transition-transform hover:scale-110"
+            style={{ borderColor: 'var(--card-border)', background: 'white' }} title="Remove highlight">
             <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>✕</span>
           </button>
         </div>
       </div>
-
-      {/* Editor */}
-      <div
-        ref={editorRef}
-        contentEditable
-        onInput={handleInput}
+      <div ref={editorRef} contentEditable onInput={handleInput}
         className="flex-1 px-4 py-3 outline-none text-sm overflow-y-auto"
         style={{ color: 'var(--text-primary)', lineHeight: '1.7', minHeight: '140px', maxHeight: '220px' }}
         data-placeholder="Start typing your note..."
-        suppressContentEditableWarning
-      />
-
+        suppressContentEditableWarning />
       <style>{`
-        [contenteditable]:empty:before {
-          content: attr(data-placeholder);
-          color: var(--text-muted);
-          pointer-events: none;
-        }
-        [contenteditable] ul { padding-left: 16px; margin: 4px 0; }
-        [contenteditable] li { margin: 2px 0; }
+        [contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text-muted); pointer-events: none; }
       `}</style>
+    </div>
+  )
+}
+
+// ============ QUICK ADD MODAL ============
+const SECTIONS = [
+  { id: 'todays-tasks', name: "Today's Tasks" },
+  { id: 'asap', name: 'ASAP' },
+  { id: 'math', name: 'Math' },
+  { id: 'english', name: 'English' },
+  { id: 'chinese', name: 'Chinese' },
+  { id: 'economics', name: 'Economics' },
+  { id: 'bm', name: 'Business Management' },
+  { id: 'biology', name: 'Biology' },
+  { id: 'tok', name: 'TOK' },
+  { id: 'ee', name: 'EE' },
+  { id: 'cas', name: 'CAS' },
+  { id: 'sat', name: 'SAT' },
+  { id: 'lirae', name: 'Lirae' },
+  { id: 'common-app', name: 'Common App' },
+  { id: 'essays', name: 'Essays' },
+  { id: 'others', name: 'Others' },
+]
+
+const COLOR_OPTIONS = [
+  { bg: '#FAE4EC', text: '#9A7080' },
+  { bg: '#F5EEE0', text: '#907860' },
+  { bg: '#D8E8F8', text: '#5878A0' },
+  { bg: '#C8D8CC', text: '#507060' },
+  { bg: '#DDD0E0', text: '#706080' },
+  { bg: '#E8E4E0', text: '#807878' },
+]
+
+function QuickAddModal({ user, onClose, onTaskAdded }: { user: User; onClose: () => void; onTaskAdded: () => void }) {
+  const [type, setType] = useState<'task' | 'block'>('task')
+  const [taskName, setTaskName] = useState('')
+  const [sectionId, setSectionId] = useState('todays-tasks')
+  const [dueDate, setDueDate] = useState('')
+  const [progress, setProgress] = useState<Progress>('0%')
+  const [blockDate, setBlockDate] = useState(new Date().toISOString().split('T')[0])
+  const [blockTitle, setBlockTitle] = useState('')
+  const [blockDuration, setBlockDuration] = useState(60)
+  const [blockColor, setBlockColor] = useState('#FAE4EC')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (type === 'task' && !taskName.trim()) return
+    if (type === 'block' && !blockTitle.trim()) return
+    setSaving(true)
+    if (type === 'task') {
+      await supabase.from('tasks').insert({
+        user_id: user.id, section_id: sectionId, task: taskName,
+        notes: '', due_date: dueDate || null, progress,
+        position: 999, is_archived: false, checklist: [],
+        reminder_days: null, is_recurring: false, recur_interval: null,
+      })
+    } else {
+      await supabase.from('summer_blocks').insert({
+        user_id: user.id, date: blockDate, title: blockTitle,
+        category: 'other', color: blockColor, duration_minutes: blockDuration,
+        block_type: 'time', quantity: null, checklist: [], is_done: false, position: 999, notes: '',
+      })
+    }
+    setSaving(false)
+    onTaskAdded()
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-md p-6" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Quick Add</h3>
+          <button onClick={onClose} className="text-xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+        </div>
+
+        {/* Type toggle */}
+        <div className="flex rounded-xl p-1 gap-1 mb-5" style={{ background: 'var(--morandi-pink)' }}>
+          <button onClick={() => setType('task')}
+            className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors"
+            style={{ background: type === 'task' ? 'white' : 'transparent', color: 'var(--morandi-pink-text)' }}>
+            ✓ Task
+          </button>
+          <button onClick={() => setType('block')}
+            className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors"
+            style={{ background: type === 'block' ? 'white' : 'transparent', color: 'var(--morandi-pink-text)' }}>
+            📅 Planner Block
+          </button>
+        </div>
+
+        {type === 'task' ? (
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Task name *</label>
+              <input value={taskName} onChange={e => setTaskName(e.target.value)}
+                placeholder="What do you need to do?"
+                className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
+                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }}
+                autoFocus />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Section *</label>
+              <select value={sectionId} onChange={e => setSectionId(e.target.value)}
+                className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
+                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)', background: 'white' }}>
+                {SECTIONS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Due date</label>
+                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+                  className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
+                  style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+              </div>
+              <div>
+                <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Progress</label>
+                <select value={progress} onChange={e => setProgress(e.target.value as Progress)}
+                  className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
+                  style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)', background: 'white' }}>
+                  {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Title *</label>
+              <input value={blockTitle} onChange={e => setBlockTitle(e.target.value)}
+                placeholder="What's this block for?"
+                className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
+                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }}
+                autoFocus />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Date *</label>
+              <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
+                className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
+                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Duration (minutes)</label>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setBlockDuration(d => Math.max(5, d - 5))}
+                  className="w-8 h-8 rounded-lg text-sm font-bold"
+                  style={{ background: 'var(--morandi-sand)', color: 'var(--morandi-sand-text)' }}>-</button>
+                <input type="number" value={blockDuration} onChange={e => setBlockDuration(parseInt(e.target.value) || 0)}
+                  className="flex-1 text-sm px-3 py-2 rounded-xl outline-none text-center"
+                  style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+                <button onClick={() => setBlockDuration(d => d + 5)}
+                  className="w-8 h-8 rounded-lg text-sm font-bold"
+                  style={{ background: 'var(--morandi-sand)', color: 'var(--morandi-sand-text)' }}>+</button>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Color</label>
+              <div className="flex gap-2">
+                {COLOR_OPTIONS.map(c => (
+                  <button key={c.bg} onClick={() => setBlockColor(c.bg)}
+                    className="w-7 h-7 rounded-full border-2 transition-transform"
+                    style={{ background: c.bg, borderColor: blockColor === c.bg ? '#888' : 'transparent', transform: blockColor === c.bg ? 'scale(1.1)' : 'scale(1)' }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <button onClick={handleSave} disabled={saving}
+          className="w-full mt-5 py-2.5 rounded-xl text-sm font-medium"
+          style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
+          {saving ? 'Adding...' : type === 'task' ? 'Add Task' : 'Add Block'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -336,6 +533,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
   const [plannerSlots, setPlannerSlots] = useState<PlannerBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [todayStats, setTodayStats] = useState({ total: 0, done: 0, deadlines: 0 })
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   const todayStr = new Date().toISOString().split('T')[0]
   const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' })
@@ -366,10 +564,6 @@ export default function HomePage({ user, onTaskChange }: Props) {
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     setTodayTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
-    setTodayStats(prev => ({
-      ...prev,
-      done: todayTasks.filter(t => (t.id === id ? { ...t, ...updates } : t).progress === '100%').length
-    }))
     await supabase.from('tasks').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
     onTaskChange?.()
   }
@@ -380,10 +574,10 @@ export default function HomePage({ user, onTaskChange }: Props) {
     onTaskChange?.()
   }
 
-  const transferPlannerTask = async (slot: WeeklySlot) => {
+  const transferPlannerTask = async (slot: PlannerBlock) => {
     const { data } = await supabase.from('tasks').insert({
-      user_id: user.id, section_id: 'todays-tasks', task: slot.task,
-      notes: slot.notes || '', due_date: null, progress: slot.progress,
+      user_id: user.id, section_id: 'todays-tasks', task: slot.title,
+      notes: slot.notes || '', due_date: null, progress: '0%',
       position: todayTasks.length, is_archived: false, checklist: slot.checklist || [],
       reminder_days: null, is_recurring: false, recur_interval: null,
     }).select().single()
@@ -426,7 +620,6 @@ export default function HomePage({ user, onTaskChange }: Props) {
 
       {/* TODAY'S TASKS + QUICK NOTE */}
       <div className="grid gap-4" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
-        {/* Today's tasks */}
         <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
           <div className="px-4 py-3 flex items-center justify-between"
             style={{ background: 'var(--section-header)', borderBottom: '0.5px solid var(--divider)' }}>
@@ -444,7 +637,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
               <div key={task.id} className="flex items-center gap-2 px-4 py-2.5 border-b"
                 style={{ borderColor: 'var(--divider)', opacity: isDone ? 0.6 : 1, background: days !== null && days <= 2 && !isDone ? 'var(--urgent-today-bg)' : undefined }}>
                 <button onClick={() => updateTask(task.id, { progress: isDone ? '0%' : '100%' })}
-                  className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors"
+                  className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
                   style={{ borderColor: 'var(--morandi-pink-text)', background: isDone ? 'var(--morandi-pink-text)' : 'transparent' }}>
                   {isDone && <i className="ti ti-check" style={{ fontSize: '7px', color: 'white' }} />}
                 </button>
@@ -458,9 +651,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
                     {getShowsAs(task.due_date)}
                   </span>
                 )}
-                {/* Progress dropdown */}
-                <select value={task.progress}
-                  onChange={e => updateTask(task.id, { progress: e.target.value as Progress })}
+                <select value={task.progress} onChange={e => updateTask(task.id, { progress: e.target.value as Progress })}
                   className="text-xs rounded-full border-0 outline-none cursor-pointer flex-shrink-0 px-1.5 py-0.5"
                   style={{ background: ps.bg, color: ps.text }}>
                   {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
@@ -474,8 +665,6 @@ export default function HomePage({ user, onTaskChange }: Props) {
             )
           })}
         </div>
-
-        {/* Quick Note */}
         <QuickNote user={user} />
       </div>
 
@@ -490,23 +679,31 @@ export default function HomePage({ user, onTaskChange }: Props) {
         <div className="px-4 py-3 flex items-center justify-between"
           style={{ background: 'var(--section-header)', borderBottom: '0.5px solid var(--divider)' }}>
           <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Today's planner</span>
-          {todayPlannerSlots.length > 0 && (
-            <button onClick={transferAllPlannerTasks}
-              className="text-xs px-2.5 py-1 rounded-lg flex items-center gap-1"
-              style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>
-              <i className="ti ti-transfer" style={{ fontSize: '10px' }} /> Transfer all
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowQuickAdd(true)}
+              className="text-xs px-2.5 py-1 rounded-lg"
+              style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
+              + Quick add
             </button>
-          )}
+            {todayPlannerSlots.length > 0 && (
+              <button onClick={transferAllPlannerTasks}
+                className="text-xs px-2.5 py-1 rounded-lg flex items-center gap-1"
+                style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>
+                <i className="ti ti-transfer" style={{ fontSize: '10px' }} /> Transfer all
+              </button>
+            )}
+          </div>
         </div>
         {todayPlannerSlots.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm italic" style={{ color: 'var(--text-muted)' }}>No planned tasks for today</div>
         ) : (
           todayPlannerSlots.map(slot => (
             <div key={slot.id} className="flex items-center gap-3 px-4 py-2.5 border-b" style={{ borderColor: 'var(--divider)' }}>
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'var(--morandi-pink)' }} />
-              <span className="text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--text-primary)' }}>{slot.task || 'Untitled'}</span>
-              {slot.time_slot && <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>{slot.time_slot}</span>}
-              <div className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>{slot.progress}</div>
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: slot.color || 'var(--morandi-pink)' }} />
+              <span className="text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--text-primary)' }}>{slot.title || 'Untitled'}</span>
+              <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+                {Math.floor(slot.duration_minutes / 60) > 0 ? `${Math.floor(slot.duration_minutes / 60)}h` : ''}{slot.duration_minutes % 60 > 0 ? ` ${slot.duration_minutes % 60}m` : ''}
+              </span>
               <button onClick={() => transferPlannerTask(slot)}
                 className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
                 style={{ border: '0.5px solid var(--morandi-pink-text)', color: 'var(--morandi-pink-text)' }}>
@@ -516,6 +713,11 @@ export default function HomePage({ user, onTaskChange }: Props) {
           ))
         )}
       </div>
+
+      {/* QUICK ADD MODAL */}
+      {showQuickAdd && (
+        <QuickAddModal user={user} onClose={() => setShowQuickAdd(false)} onTaskAdded={() => { fetchAll(); onTaskChange?.() }} />
+      )}
     </div>
   )
 }
