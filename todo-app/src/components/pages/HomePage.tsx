@@ -534,6 +534,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
   const [loading, setLoading] = useState(true)
   const [todayStats, setTodayStats] = useState({ total: 0, done: 0, deadlines: 0 })
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [transferredSlots, setTransferredSlots] = useState<string[]>([])
 
   const todayStr = new Date().toISOString().split('T')[0]
   const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' })
@@ -590,8 +591,9 @@ export default function HomePage({ user, onTaskChange }: Props) {
   }
 
  const transferPlannerTask = async (slot: PlannerBlock) => {
-  const alreadyExists = todayTasks.some(t => t.task === slot.title)
-  if (alreadyExists) return
+  if (transferredSlots.includes(slot.id)) return
+  if (todayTasks.some(t => t.task === slot.title)) return
+  setTransferredSlots(prev => [...prev, slot.id])
   const { data } = await supabase.from('tasks').insert({
     user_id: user.id, section_id: 'todays-tasks', task: slot.title,
     notes: slot.notes || '', due_date: null, progress: '0%',
@@ -735,15 +737,15 @@ export default function HomePage({ user, onTaskChange }: Props) {
                 style={{ border: '0.5px solid var(--morandi-pink-text)', color: 'var(--morandi-pink-text)' }}>
                 <button
   onClick={() => transferPlannerTask(slot)}
-  disabled={todayTasks.some(t => t.task === slot.title)}
+  disabled={transferredSlots.includes(slot.id) || transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title)
   className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
   style={{
-    background: todayTasks.some(t => t.task === slot.title) ? 'var(--morandi-linen)' : 'transparent',
+    background: transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? 'var(--morandi-linen)' : 'transparent',
     border: '0.5px solid var(--morandi-pink-text)',
-    color: todayTasks.some(t => t.task === slot.title) ? 'var(--text-muted)' : 'var(--morandi-pink-text)',
-    cursor: todayTasks.some(t => t.task === slot.title) ? 'default' : 'pointer'
+    color: transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? 'var(--text-muted)' : 'var(--morandi-pink-text)',
+    cursor: transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? 'default' : 'pointer'
   }}>
-  {todayTasks.some(t => t.task === slot.title) ? '✓' : '→ Today'}
+  {transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? '✓' : '→ Today'}
 </button>
               </button>
             </div>
