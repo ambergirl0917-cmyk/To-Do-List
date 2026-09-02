@@ -31,24 +31,7 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
     setLoading(false)
   }, [user.id, sectionId])
 
-  useEffect(() => {
-    fetchTasks()
-
-    // Real-time subscription — re-fetch whenever tasks table changes
-    const channel = supabase
-      .channel(`tasks-${sectionId}-${user.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'tasks',
-        filter: `user_id=eq.${user.id}`,
-      }, () => {
-        fetchTasks()
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [fetchTasks, sectionId, user.id])
+useEffect(() => { fetchTasks() }, [fetchTasks])
 
   const addTask = async () => {
     const { data } = await supabase.from('tasks').insert({
