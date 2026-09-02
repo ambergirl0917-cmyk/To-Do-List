@@ -512,11 +512,13 @@ export default function HomePage({ user, onTaskChange, showQuickAdd: externalSho
   const [allDeadlines, setAllDeadlines] = useState<any[]>([])
   const [plannerSlots, setPlannerSlots] = useState<PlannerBlock[]>([])
   const [loading, setLoading] = useState(true)
-  const [todayStats, setTodayStats] = useState({ total: 0, done: 0, deadlines: 0 })
+  const [todayStats, setTodayStats] = useState({ total: 0, done: parseInt(sessionStorage.getItem('done_today') || '0'), deadlines: 0 })
   const [internalShowQuickAdd, setInternalShowQuickAdd] = useState(false)
 const showQuickAdd = externalShowQuickAdd || internalShowQuickAdd
 const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.() }
-  const [transferredSlots, setTransferredSlots] = useState<string[]>([])
+  const [transferredSlots, setTransferredSlots] = useState<string[]>(() => {
+  try { return JSON.parse(sessionStorage.getItem('transferred_slots') || '[]') } catch { return [] }
+})
 
   const todayStr = new Date().toISOString().split('T')[0]
 
@@ -575,7 +577,11 @@ const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.(
   const transferPlannerTask = async (slot: PlannerBlock) => {
     if (transferredSlots.includes(slot.id)) return
     if (todayTasks.some(t => t.task === slot.title)) return
-    setTransferredSlots(prev => [...prev, slot.id])
+    setTransferredSlots(prev => {
+  const updated = [...prev, slot.id]
+  sessionStorage.setItem('transferred_slots', JSON.stringify(updated))
+  return updated
+})
     const { data } = await supabase.from('tasks').insert({
       user_id: user.id, section_id: 'todays-tasks', task: slot.title,
       notes: slot.notes || '', due_date: null, progress: '0%',
@@ -644,7 +650,11 @@ const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.(
                     } else {
                       setTodayTasks(prev => {
                         const updated = prev.filter(t => t.id !== task.id)
-                        setTodayStats(s => ({ ...s, total: updated.length, done: s.done + 1 }))
+                        setTodayStats(s => {
+  const newDone = s.done + 1
+  sessionStorage.setItem('done_today', String(newDone))
+  return { ...s, total: updated.length, done: newDone }
+})
                         return updated
                       })
                       await supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
