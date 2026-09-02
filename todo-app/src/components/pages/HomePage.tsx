@@ -563,10 +563,20 @@ export default function HomePage({ user, onTaskChange }: Props) {
   }
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    setTodayTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
-    await supabase.from('tasks').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
-    onTaskChange?.()
+  setTodayTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+  await supabase.from('tasks').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
+  if (updates.progress === '100%') {
+    const task = todayTasks.find(t => t.id === id)
+    if (task) {
+      const matchingBlock = plannerSlots.find(s => s.title === task.task && s.date === todayStr)
+      if (matchingBlock) {
+        await supabase.from('summer_blocks').update({ is_done: true }).eq('id', matchingBlock.id)
+        setPlannerSlots(prev => prev.map(s => s.id === matchingBlock.id ? { ...s, is_done: true } : s))
+      }
+    }
   }
+  onTaskChange?.()
+}
 
   const removeFromToday = async (id: string) => {
     setTodayTasks(prev => prev.filter(t => t.id !== id))
