@@ -9,6 +9,8 @@ interface Props {
   user: User
   onTaskChange?: () => void
   searchQuery?: string
+  showQuickAdd?: boolean
+  onCloseQuickAdd?: () => void
 }
 
 const PROGRESS_OPTIONS: Progress[] = ['0%', '20%', '50%', '70%', '100%']
@@ -504,14 +506,16 @@ function QuickAddModal({ user, onClose, onTaskAdded }: { user: User; onClose: ()
 }
 
 // ============ MAIN HOME PAGE ============
-export default function HomePage({ user, onTaskChange }: Props) {
+export default function HomePage({ user, onTaskChange, showQuickAdd: externalShowQuickAdd, onCloseQuickAdd }: Props) {
   const [todayTasks, setTodayTasks] = useState<Task[]>([])
   const [allTasks, setAllTasks] = useState<Task[]>([])
   const [allDeadlines, setAllDeadlines] = useState<any[]>([])
   const [plannerSlots, setPlannerSlots] = useState<PlannerBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [todayStats, setTodayStats] = useState({ total: 0, done: 0, deadlines: 0 })
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [internalShowQuickAdd, setInternalShowQuickAdd] = useState(false)
+const showQuickAdd = externalShowQuickAdd || internalShowQuickAdd
+const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.() }
   const [transferredSlots, setTransferredSlots] = useState<string[]>([])
 
   const todayStr = new Date().toISOString().split('T')[0]
@@ -690,7 +694,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
           style={{ background: 'var(--section-header)', borderBottom: '0.5px solid var(--divider)' }}>
           <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Today's planner</span>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowQuickAdd(true)}
+            <button onClick={() => setInternalShowQuickAdd(true)}
               className="text-xs px-2.5 py-1 rounded-lg"
               style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
               + Quick add
@@ -733,8 +737,8 @@ export default function HomePage({ user, onTaskChange }: Props) {
       </div>
 
       {showQuickAdd && (
-        <QuickAddModal user={user} onClose={() => setShowQuickAdd(false)} onTaskAdded={() => { fetchAll(); onTaskChange?.() }} />
-      )}
+  <QuickAddModal user={user} onClose={closeQuickAdd} onTaskAdded={() => { fetchAll(); onTaskChange?.() }} />
+)}
     </div>
   )
 }
