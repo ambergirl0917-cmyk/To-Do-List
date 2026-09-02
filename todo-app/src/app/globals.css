@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 :root {
-  /* Morandi palette */
   --morandi-pink: #FAE4EC;
   --morandi-pink-text: #9A7080;
   --morandi-sand: #F5EEE0;
@@ -17,27 +16,26 @@
   --morandi-linen: #EDE8DC;
   --morandi-linen-text: #807868;
 
-  /* UI */
   --bg: #FAFAF8;
   --card-bg: #ffffff;
-  --card-border: #E8E0DC;
-  --section-header: #FBF3F5;
+  --card-border: #EDE8E8;
+  --section-header: #FEF5F7;
   --text-primary: #6E6068;
   --text-secondary: #A898A0;
   --text-muted: #C4B8BC;
-  --divider: #F0EAE8;
+  --divider: #F5EEEE;
+  --btn-bg: #EEC4CC;
+  --btn-text: #9A7080;
 
-  /* Urgent */
   --urgent-today-bg: #FDE8E8;
   --urgent-today-text: #C07070;
   --urgent-week-bg: #FEF4EC;
   --urgent-week-text: #B08050;
 
-  /* Legacy pink (kept for compatibility) */
   --pink-50: #FFF5F8;
   --pink-100: #FAE4EC;
   --pink-200: #F0D0D8;
-  --pink-300: #E8C4CC;
+  --pink-300: #EEC4CC;
   --pink-400: #D4A8B4;
   --pink-500: #C49AAA;
   --pink-600: #B08090;
@@ -57,10 +55,7 @@ body {
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--morandi-pink-text); opacity: 0.3; border-radius: 4px; }
 
-input[type="date"]::-webkit-calendar-picker-indicator {
-  opacity: 0.5;
-  cursor: pointer;
-}
+input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
 
 .drag-handle { cursor: grab; }
 .drag-handle:active { cursor: grabbing; }
