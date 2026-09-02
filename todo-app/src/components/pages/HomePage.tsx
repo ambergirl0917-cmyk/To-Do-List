@@ -332,18 +332,6 @@ function QuickNote({ user }: { user: User }) {
         </div>
       </div>
       <div ref={editorRef} contentEditable onInput={handleInput}
-  onClick={e => {
-    const sel = window.getSelection()
-    if (!sel || !sel.rangeCount) return
-    const range = sel.getRangeAt(0)
-    const node = range.startContainer
-    if (node.textContent?.startsWith('☐') || node.textContent?.startsWith('☑')) {
-      node.textContent = node.textContent.startsWith('☐')
-        ? node.textContent.replace('☐', '☑')
-        : node.textContent.replace('☑', '☐')
-      handleInput()
-    }
-  }}
         className="flex-1 px-4 py-3 outline-none text-sm overflow-y-auto"
         style={{ color: 'var(--text-primary)', lineHeight: '1.7', minHeight: '140px', maxHeight: '220px' }}
         data-placeholder="Start typing your note..."
