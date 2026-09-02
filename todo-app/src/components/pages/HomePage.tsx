@@ -539,6 +539,11 @@ export default function HomePage({ user, onTaskChange }: Props) {
   const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' })
 
   useEffect(() => { fetchAll() }, [user])
+  useEffect(() => {
+  const handleFocus = () => fetchAll()
+  window.addEventListener('focus', handleFocus)
+  return () => window.removeEventListener('focus', handleFocus)
+}, [])
 
   const fetchAll = async () => {
     const [tasksRes, deadlinesRes, plannerRes] = await Promise.all([
