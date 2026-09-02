@@ -649,15 +649,15 @@ export default function HomePage({ user, onTaskChange }: Props) {
               <div key={task.id} className="flex items-center gap-2 px-4 py-2.5 border-b"
                 style={{ borderColor: 'var(--divider)', opacity: isDone ? 0.6 : 1, background: days !== null && days <= 2 && !isDone ? 'var(--urgent-today-bg)' : undefined }}>
                 <button
-                  onClick={() => {
-                    if (isDone) {
-                      updateTask(task.id, { progress: '0%' })
-                    } else {
-                      setTodayTasks(prev => prev.filter(t => t.id !== task.id))
-                      supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
-                      onTaskChange?.()
-                    }
-                  }}
+                  onClick={async () => {
+  if (isDone) {
+    updateTask(task.id, { progress: '0%' })
+  } else {
+    setTodayTasks(prev => prev.filter(t => t.id !== task.id))
+    await supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
+    onTaskChange?.()
+  }
+}}
                   className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
                   style={{ borderColor: 'var(--morandi-pink-text)', background: isDone ? 'var(--morandi-pink-text)' : 'transparent' }}>
                   {isDone && <i className="ti ti-check" style={{ fontSize: '7px', color: 'white' }} />}
