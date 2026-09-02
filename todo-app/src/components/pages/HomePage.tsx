@@ -655,7 +655,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
   } else {
     setTodayTasks(prev => {
       const updated = prev.filter(t => t.id !== task.id)
-      setTodayStats(s => ({ ...s, total: updated.length, done: updated.filter(t => t.progress === '100%').length }))
+      setTodayStats(s => ({ ...s, total: updated.length, done: s.done + 1 }))
       return updated
     })
     await supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
