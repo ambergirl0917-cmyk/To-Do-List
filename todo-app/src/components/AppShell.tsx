@@ -129,7 +129,7 @@ export default function AppShell({ user }: AppShellProps) {
   const renderPage = () => {
     const props = { user, onTaskChange: handleTaskChange, focusMode, searchQuery }
     switch (currentPage) {
-      case 'home': return <HomePage user={user} onTaskChange={handleTaskChange} />
+      case 'home': return <HomePage user={user} onTaskChange={handleTaskChange} showQuickAdd={showQuickAdd} onCloseQuickAdd={() => setShowQuickAdd(false)} />
       case 'overview': return <OverviewPage {...props} />
       case 'subjects': return <SubjectsPage {...props} />
       case 'ibcore': return <IBCorePage {...props} />
