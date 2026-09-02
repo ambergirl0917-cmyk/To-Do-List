@@ -285,12 +285,7 @@ const insertCheckbox = () => {
   handleInput()
 }
   range.insertNode(span)
-  range.setStartAfter(span)
-  range.setEndAfter(span)
-  sel.removeAllRanges()
-  sel.addRange(range)
-  handleInput()
-}
+  
   const HIGHLIGHTS = [
     { color: '#FAE4EC', label: 'Pink' },
     { color: '#D8E8F8', label: 'Blue' },
