@@ -130,7 +130,7 @@ export default function AppShell({ user }: AppShellProps) {
     const props = { user, onTaskChange: handleTaskChange, focusMode, searchQuery }
     switch (currentPage) {
       case 'home': return <HomePage user={user} onTaskChange={handleTaskChange} />
-      case 'overview': return <OverviewPage key={currentPage + taskRefreshKey} {...props} />
+      case 'overview': return <OverviewPage {...props} />
       case 'subjects': return <SubjectsPage {...props} />
       case 'ibcore': return <IBCorePage {...props} />
       case 'sat': return <SATPage {...props} />
