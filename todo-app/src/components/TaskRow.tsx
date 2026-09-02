@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task, Progress } from '@/lib/types'
-import { getShowsAs, getDaysUntil, getProgressColor } from '@/lib/showsAs'
+import { getShowsAs, getDaysUntil } from '@/lib/showsAs'
 import NotesPanel from './NotesPanel'
 
 const PROGRESS_OPTIONS: Progress[] = ['0%', '20%', '50%', '70%', '100%']
@@ -69,14 +69,13 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
   const isUrgent = days !== null && days >= 0 && days <= reminderThreshold
   const hasNotes = !!(task.notes || (task.checklist && task.checklist.length > 0))
   const progressStyle = PROGRESS_STYLES[task.progress] || PROGRESS_STYLES['0%']
-
   const rowBg = isUrgent ? 'var(--urgent-today-bg)' : undefined
 
   // ===== MOBILE =====
   if (isMobile) {
     return (
       <>
-        <div ref={setNodeRef} style={{ ...style, background: rowBg }} className="px-3 py-3 border-b" style2={{ borderColor: 'var(--divider)' }}>
+        <div ref={setNodeRef} style={{ ...style, background: rowBg, borderColor: 'var(--divider)' }} className="px-3 py-3 border-b">
           <div className="flex items-center gap-3 mb-2">
             <button onClick={() => onArchive(task.id)}
               className="w-6 h-6 rounded-full border-2 flex-shrink-0 transition-colors"
@@ -88,7 +87,8 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
           <div className="flex items-center gap-2 pl-9">
             <input type="date" value={task.due_date || ''} onChange={e => onUpdate(task.id, { due_date: e.target.value || null })}
               className="text-xs bg-transparent outline-none flex-shrink-0" style={{ color: 'var(--text-secondary)' }} />
-            <span className="text-xs italic flex-shrink-0" style={{ color: isUrgent ? 'var(--urgent-today-text)' : 'var(--morandi-sand-text)' }}>
+            <span className="text-xs italic flex-shrink-0"
+              style={{ color: isUrgent ? 'var(--urgent-today-text)' : 'var(--morandi-sand-text)' }}>
               {showsAs}
             </span>
             <select value={task.progress} onChange={e => onUpdate(task.id, { progress: e.target.value as Progress })}
@@ -97,8 +97,7 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
               {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             <div className="flex items-center gap-2 ml-auto">
-              <button onClick={() => setShowNotes(s => !s)}
-                className="p-1.5 rounded-lg transition-colors"
+              <button onClick={() => setShowNotes(s => !s)} className="p-1.5 rounded-lg transition-colors"
                 style={{ color: hasNotes ? 'var(--morandi-pink-text)' : 'var(--text-muted)' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -107,7 +106,7 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
                 </svg>
               </button>
               <div className="relative">
-                <button onClick={() => setShowMove(s => !s)} className="text-pink-300 p-1.5 rounded-lg"
+                <button onClick={() => setShowMove(s => !s)} className="p-1.5 rounded-lg"
                   style={{ color: 'var(--text-muted)' }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/>
@@ -137,9 +136,10 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
   // ===== DESKTOP =====
   return (
     <>
-      <div ref={setNodeRef} style={{ ...style, background: rowBg }}
-        className="flex items-center gap-2 px-3 py-2 border-b group transition-colors hover:bg-pink-50/20"
-        style2={{ borderColor: 'var(--divider)' }}>
+      <div ref={setNodeRef}
+        style={{ ...style, background: rowBg, borderColor: 'var(--divider)' }}
+        className="flex items-center gap-3 px-4 py-2.5 border-b group transition-colors hover:bg-pink-50/20">
+
         {/* Drag handle */}
         <button {...attributes} {...listeners}
           className="drag-handle flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -158,36 +158,34 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
 
         {/* Task name */}
         <input value={task.task} onChange={e => onUpdate(task.id, { task: e.target.value })}
-          placeholder="Task..." className="flex-1 bg-transparent text-sm outline-none min-w-0"
-          style={{ color: 'var(--text-primary)' }} />
+          placeholder="Task..." className="flex-1 bg-transparent text-sm outline-none"
+          style={{ color: 'var(--text-primary)', minWidth: '120px', maxWidth: '300px' }} />
 
         {/* Due date */}
         <input type="date" value={task.due_date || ''} onChange={e => onUpdate(task.id, { due_date: e.target.value || null })}
-          className="text-xs bg-transparent outline-none w-28 flex-shrink-0"
+          className="text-xs bg-transparent outline-none flex-shrink-0 w-28"
           style={{ color: 'var(--text-secondary)' }} />
 
         {/* Shows As */}
-        <span className="text-xs italic w-20 flex-shrink-0"
+        <span className="text-xs italic flex-shrink-0 w-20"
           style={{ color: isUrgent ? 'var(--urgent-today-text)' : 'var(--morandi-sand-text)' }}>
           {showsAs}
         </span>
 
         {/* Progress */}
         <select value={task.progress} onChange={e => onUpdate(task.id, { progress: e.target.value as Progress })}
-          className="text-xs px-2 py-1 rounded-full border-0 outline-none cursor-pointer flex-shrink-0 w-20"
+          className="text-xs px-2 py-1 rounded-full border-0 outline-none cursor-pointer flex-shrink-0"
           style={{ background: progressStyle.bg, color: progressStyle.text }}>
           {PROGRESS_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 ml-auto flex-shrink-0">
           {/* Reminder */}
           <div className="relative">
             <button onClick={() => setShowReminder(s => !s)}
-              className="p-1 transition-colors"
-              style={{ color: task.reminder_days != null ? 'var(--morandi-pink-text)' : 'var(--text-muted)', opacity: task.reminder_days != null ? 1 : 0, }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = task.reminder_days != null ? '1' : '0'}>
+              className="p-1 transition-all opacity-0 group-hover:opacity-100"
+              style={{ color: task.reminder_days != null ? 'var(--morandi-pink-text)' : 'var(--text-muted)' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
@@ -197,23 +195,22 @@ export default function TaskRow({ task, onUpdate, onArchive, onMove, currentSect
                 style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                 <p className="text-xs font-medium mb-2" style={{ color: 'var(--morandi-pink-text)' }}>Remind me when...</p>
                 <div className="flex items-center gap-2">
-                  <input type="number" min="1" max="60" value={task.reminder_days ?? ''}
-                    placeholder="2"
+                  <input type="number" min="1" max="60" value={task.reminder_days ?? ''} placeholder="2"
                     onChange={e => onUpdate(task.id, { reminder_days: e.target.value === '' ? null : parseInt(e.target.value) })}
                     className="w-14 text-sm px-2 py-1 rounded-lg outline-none"
                     style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
                   <span className="text-xs" style={{ color: 'var(--text-muted)' }}>days before</span>
                 </div>
-                <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Default: 2 days</p>
                 <button onClick={() => setShowReminder(false)}
-                  className="mt-2 w-full text-xs py-1 rounded-lg text-white" style={{ background: 'var(--morandi-pink-text)' }}>Done</button>
+                  className="mt-2 w-full text-xs py-1 rounded-lg text-white"
+                  style={{ background: 'var(--morandi-pink-text)' }}>Done</button>
               </div>
             )}
           </div>
 
           {/* Notes */}
           <button onClick={() => setShowNotes(s => !s)}
-            className="p-1 transition-colors"
+            className="p-1 transition-all"
             style={{ color: hasNotes ? 'var(--morandi-pink-text)' : 'var(--text-muted)', opacity: hasNotes ? 1 : 0 }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = hasNotes ? '1' : '0'}>
