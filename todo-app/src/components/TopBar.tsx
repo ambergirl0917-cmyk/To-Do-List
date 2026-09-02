@@ -66,15 +66,15 @@ export default function TopBar({
 
   // All urgent items sorted by date
   const allUrgentItems = [
-    ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isToday: t.due_date === todayStr })),
-    ...urgentDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isToday: d.due_date === todayStr })),
-    ...upcomingTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isToday: false })),
-    ...upcomingDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isToday: false })),
-  ].sort((a, b) => {
-    if (!a.date) return 1
-    if (!b.date) return -1
-    return a.date.localeCompare(b.date)
-  })
+  ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: true })),
+  ...urgentDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: true })),
+  ...upcomingTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: false })),
+  ...upcomingDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: false })),
+].sort((a, b) => {
+  if (!a.date) return 1
+  if (!b.date) return -1
+  return a.date.localeCompare(b.date)
+})
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return ''
@@ -148,7 +148,7 @@ export default function TopBar({
                   {allUrgentItems.map((item, i) => (
                     <div key={`${item.type}-${item.id}-${i}`}
                       className="flex items-center gap-2.5 px-3 py-2 mx-1.5 my-0.5 rounded-lg"
-                      style={{ background: item.isToday ? 'var(--urgent-today-bg)' : 'var(--urgent-week-bg)' }}>
+                      style={{ background: item.isUrgent ? 'var(--urgent-today-bg)' : 'var(--urgent-week-bg)' }}>
                       <i className={item.type === 'deadline' ? 'ti ti-calendar-event' : 'ti ti-circle-check'}
                         style={{ fontSize: '13px', color: item.isToday ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)', flexShrink: 0 }} />
                       <span className="text-sm flex-1 truncate"
