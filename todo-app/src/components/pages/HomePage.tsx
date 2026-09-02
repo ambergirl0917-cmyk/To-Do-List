@@ -339,6 +339,14 @@ function QuickNote({ user }: { user: User }) {
         </div>
       </div>
       <div ref={editorRef} contentEditable onInput={handleInput}
+  onMouseDown={e => {
+    const target = e.target as HTMLElement
+    if (target.innerHTML?.includes('☐') || target.innerHTML?.includes('☑')) {
+      e.preventDefault()
+      target.innerHTML = target.innerHTML.startsWith('☑') ? '☐ ' : '☑ '
+      handleInput()
+    }
+  }}
         className="flex-1 px-4 py-3 outline-none text-sm overflow-y-auto"
         style={{ color: 'var(--text-primary)', lineHeight: '1.7', minHeight: '140px', maxHeight: '220px' }}
         data-placeholder="Start typing your note..."
