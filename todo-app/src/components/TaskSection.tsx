@@ -31,7 +31,24 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
     setLoading(false)
   }, [user.id, sectionId])
 
-  useEffect(() => { fetchTasks() }, [fetchTasks])
+  useEffect(() => {
+    fetchTasks()
+
+    // Real-time subscription — re-fetch whenever tasks table changes
+    const channel = supabase
+      .channel(`tasks-${sectionId}-${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'tasks',
+        filter: `user_id=eq.${user.id}`,
+      }, () => {
+        fetchTasks()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchTasks, sectionId, user.id])
 
   const addTask = async () => {
     const { data } = await supabase.from('tasks').insert({
@@ -88,7 +105,6 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
     <div className="rounded-xl border overflow-visible"
       style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
 
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b"
         style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
         <div className="flex items-center gap-2">
@@ -105,7 +121,6 @@ export default function TaskSection({ user, sectionId, sectionName, color, onTas
         </div>
       </div>
 
-      {/* Column headers */}
       <div className="flex items-center px-4 py-1.5 border-b text-xs"
         style={{ borderColor: 'var(--divider)', color: 'var(--text-muted)', background: 'var(--card-bg)' }}>
         <div className="w-4 flex-shrink-0 mr-2" />
