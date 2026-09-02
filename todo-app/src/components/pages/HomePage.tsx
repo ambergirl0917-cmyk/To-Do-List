@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { Task, WeeklySlot, Progress } from '@/lib/types'
+import { Task, PlannerBlock, Progress } from '@/lib/types'
 import { getShowsAs, getDaysUntil } from '@/lib/showsAs'
 
 interface Props {
@@ -333,7 +333,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
   const [todayTasks, setTodayTasks] = useState<Task[]>([])
   const [allTasks, setAllTasks] = useState<Task[]>([])
   const [allDeadlines, setAllDeadlines] = useState<any[]>([])
-  const [plannerSlots, setPlannerSlots] = useState<WeeklySlot[]>([])
+  const [plannerSlots, setPlannerSlots] = useState<PlannerBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [todayStats, setTodayStats] = useState({ total: 0, done: 0, deadlines: 0 })
 
@@ -346,7 +346,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
     const [tasksRes, deadlinesRes, plannerRes] = await Promise.all([
       supabase.from('tasks').select('*').eq('user_id', user.id).eq('is_archived', false),
       supabase.from('deadlines').select('*').eq('user_id', user.id).neq('status', 'Done'),
-      supabase.from('weekly_slots').select('*').eq('user_id', user.id).order('position'),
+      supabase.from('summer_blocks').select('*').eq('user_id', user.id).order('position'),
     ])
     const tasks = tasksRes.data || []
     const deadlines = deadlinesRes.data || []
@@ -394,7 +394,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
     for (const slot of todayPlannerSlots) await transferPlannerTask(slot)
   }
 
-  const todayPlannerSlots = plannerSlots.filter(s => s.day === todayDay)
+  const todayPlannerSlots = plannerSlots.filter(s => s.date === todayStr)
 
   if (loading) return <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-muted)' }}>Loading...</div>
 
