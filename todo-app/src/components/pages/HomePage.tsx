@@ -733,7 +733,18 @@ export default function HomePage({ user, onTaskChange }: Props) {
               <button onClick={() => transferPlannerTask(slot)}
                 className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
                 style={{ border: '0.5px solid var(--morandi-pink-text)', color: 'var(--morandi-pink-text)' }}>
-                → Today
+                <button
+  onClick={() => transferPlannerTask(slot)}
+  disabled={todayTasks.some(t => t.task === slot.title)}
+  className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
+  style={{
+    background: todayTasks.some(t => t.task === slot.title) ? 'var(--morandi-linen)' : 'transparent',
+    border: '0.5px solid var(--morandi-pink-text)',
+    color: todayTasks.some(t => t.task === slot.title) ? 'var(--text-muted)' : 'var(--morandi-pink-text)',
+    cursor: todayTasks.some(t => t.task === slot.title) ? 'default' : 'pointer'
+  }}>
+  {todayTasks.some(t => t.task === slot.title) ? '✓' : '→ Today'}
+</button>
               </button>
             </div>
           ))
