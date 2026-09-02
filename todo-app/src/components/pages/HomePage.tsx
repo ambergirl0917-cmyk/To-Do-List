@@ -280,20 +280,10 @@ function QuickNote({ user }: { user: User }) {
     handleInput()
   }
 
-  const insertCheckbox = () => {
-  editorRef.current?.focus()
-  const sel = window.getSelection()
-  if (!sel || !sel.rangeCount) return
-  const range = sel.getRangeAt(0)
-  range.deleteContents()
-  const span = document.createElement('span')
-  span.innerHTML = '☐ '
-  span.style.cursor = 'pointer'
-  span.onclick = (e) => {
-    const el = e.target as HTMLSpanElement
-    el.innerHTML = el.innerHTML.startsWith('☑') ? '☐ ' : '☑ '
-    handleInput()
-  }
+const insertCheckbox = () => {
+  document.execCommand('insertHTML', false, '<input type="checkbox" style="accent-color:#9A7080;margin-right:6px;cursor:pointer;"> ')
+  handleInput()
+}
   range.insertNode(span)
   range.setStartAfter(span)
   range.setEndAfter(span)
