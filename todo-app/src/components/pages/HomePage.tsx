@@ -574,15 +574,17 @@ export default function HomePage({ user, onTaskChange }: Props) {
     onTaskChange?.()
   }
 
-  const transferPlannerTask = async (slot: PlannerBlock) => {
-    const { data } = await supabase.from('tasks').insert({
-      user_id: user.id, section_id: 'todays-tasks', task: slot.title,
-      notes: slot.notes || '', due_date: null, progress: '0%',
-      position: todayTasks.length, is_archived: false, checklist: slot.checklist || [],
-      reminder_days: null, is_recurring: false, recur_interval: null,
-    }).select().single()
-    if (data) { setTodayTasks(prev => [...prev, data]); onTaskChange?.() }
-  }
+ const transferPlannerTask = async (slot: PlannerBlock) => {
+  const alreadyExists = todayTasks.some(t => t.task === slot.title)
+  if (alreadyExists) return
+  const { data } = await supabase.from('tasks').insert({
+    user_id: user.id, section_id: 'todays-tasks', task: slot.title,
+    notes: slot.notes || '', due_date: null, progress: '0%',
+    position: todayTasks.length, is_archived: false, checklist: slot.checklist || [],
+    reminder_days: null, is_recurring: false, recur_interval: null,
+  }).select().single()
+  if (data) { setTodayTasks(prev => [...prev, data]); onTaskChange?.() }
+}
 
   const transferAllPlannerTasks = async () => {
     for (const slot of todayPlannerSlots) await transferPlannerTask(slot)
