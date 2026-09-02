@@ -56,14 +56,12 @@ export default function AppShell({ user }: AppShellProps) {
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<Deadline[]>([])
   const [focusMode, setFocusMode] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [plannerWeeks, setPlannerWeeks] = useState(3)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [taskRefreshKey, setTaskRefreshKey] = useState(0)
 
   useEffect(() => {
     fetchUrgentTasks()
     fetchUrgentDeadlines()
-    const stored = localStorage.getItem(`planner_weeks_${user.id}`)
-    if (stored) setPlannerWeeks(parseInt(stored))
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
     window.addEventListener('resize', checkMobile)
@@ -74,21 +72,14 @@ export default function AppShell({ user }: AppShellProps) {
     const todayStr = localDateStr(0)
     const in14DaysStr = localDateStr(14)
     const { data } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_archived', false)
-      .neq('progress', '100%')
-      .not('due_date', 'is', null)
-      .gte('due_date', todayStr)
-      .lte('due_date', in14DaysStr)
-      .order('due_date', { ascending: true })
-      .limit(20)
+      .from('tasks').select('*')
+      .eq('user_id', user.id).eq('is_archived', false)
+      .neq('progress', '100%').not('due_date', 'is', null)
+      .gte('due_date', todayStr).lte('due_date', in14DaysStr)
+      .order('due_date', { ascending: true }).limit(20)
     if (data) {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const urgent: Task[] = []
-      const upcoming: Task[] = []
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      const urgent: Task[] = []; const upcoming: Task[] = []
       for (const task of data) {
         const [y, m, d] = task.due_date.split('-').map(Number)
         const dueDate = new Date(y, m - 1, d)
@@ -97,8 +88,7 @@ export default function AppShell({ user }: AppShellProps) {
         if (diffDays <= threshold) urgent.push(task)
         else if (upcoming.length < 5) upcoming.push(task)
       }
-      setUrgentTasks(urgent)
-      setUpcomingTasks(upcoming)
+      setUrgentTasks(urgent); setUpcomingTasks(upcoming)
     }
   }
 
@@ -106,19 +96,14 @@ export default function AppShell({ user }: AppShellProps) {
     const todayStr = localDateStr(0)
     const in14DaysStr = localDateStr(14)
     const { data } = await supabase
-      .from('deadlines')
-      .select('*')
-      .eq('user_id', user.id)
-      .neq('status', 'Done')
+      .from('deadlines').select('*')
+      .eq('user_id', user.id).neq('status', 'Done')
       .not('due_date', 'is', null)
-      .gte('due_date', todayStr)
-      .lte('due_date', in14DaysStr)
+      .gte('due_date', todayStr).lte('due_date', in14DaysStr)
       .order('due_date', { ascending: true })
     if (data) {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const urgent: Deadline[] = []
-      const upcoming: Deadline[] = []
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      const urgent: Deadline[] = []; const upcoming: Deadline[] = []
       for (const deadline of data) {
         const [y, m, d] = deadline.due_date.split('-').map(Number)
         const dueDate = new Date(y, m - 1, d)
@@ -127,9 +112,13 @@ export default function AppShell({ user }: AppShellProps) {
         if (diffDays <= threshold) urgent.push(deadline)
         else upcoming.push(deadline)
       }
-      setUrgentDeadlines(urgent)
-      setUpcomingDeadlines(upcoming)
+      setUrgentDeadlines(urgent); setUpcomingDeadlines(upcoming)
     }
+  }
+
+  const handleTaskChange = () => {
+    fetchUrgentTasks()
+    setTaskRefreshKey(k => k + 1)
   }
 
   const handleNavigate = (page: PageId) => {
@@ -138,10 +127,10 @@ export default function AppShell({ user }: AppShellProps) {
   }
 
   const renderPage = () => {
-    const props = { user, onTaskChange: fetchUrgentTasks, focusMode, searchQuery }
+    const props = { user, onTaskChange: handleTaskChange, focusMode, searchQuery }
     switch (currentPage) {
-      case 'home': return <HomePage user={user} onTaskChange={fetchUrgentTasks} />
-      case 'overview': return <OverviewPage {...props} />
+      case 'home': return <HomePage user={user} onTaskChange={handleTaskChange} />
+      case 'overview': return <OverviewPage key={taskRefreshKey} {...props} />
       case 'subjects': return <SubjectsPage {...props} />
       case 'ibcore': return <IBCorePage {...props} />
       case 'sat': return <SATPage {...props} />
@@ -151,20 +140,14 @@ export default function AppShell({ user }: AppShellProps) {
       case 'deadlines': return <DeadlinesPage user={user} onDeadlineChange={fetchUrgentDeadlines} />
       case 'archive': return <ArchivePage user={user} />
       case 'settings': return <SettingsPage user={user} />
-      default: return <HomePage user={user} onTaskChange={fetchUrgentTasks} />
+      default: return <HomePage user={user} onTaskChange={handleTaskChange} />
     }
   }
 
   const topBarProps = {
-    user,
-    urgentTasks,
-    upcomingTasks,
-    urgentDeadlines,
-    upcomingDeadlines,
-    focusMode,
-    onToggleFocus: () => setFocusMode(f => !f),
-    searchQuery,
-    onSearchChange: setSearchQuery,
+    user, urgentTasks, upcomingTasks, urgentDeadlines, upcomingDeadlines,
+    focusMode, onToggleFocus: () => setFocusMode(f => !f),
+    searchQuery, onSearchChange: setSearchQuery,
     onQuickAdd: () => setShowQuickAdd(true),
   }
 
@@ -177,11 +160,9 @@ export default function AppShell({ user }: AppShellProps) {
         ) : (
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3 bg-white border-b flex-shrink-0" style={{ borderColor: 'var(--card-border)' }}>
-              <button
-                onClick={() => setMobileShowHome(true)}
+              <button onClick={() => setMobileShowHome(true)}
                 className="flex items-center gap-1.5 text-sm font-medium"
-                style={{ color: 'var(--morandi-pink-text)' }}
-              >
+                style={{ color: 'var(--morandi-pink-text)' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="15 18 9 12 15 6"/>
                 </svg>
@@ -189,9 +170,7 @@ export default function AppShell({ user }: AppShellProps) {
               </button>
               <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{PAGE_LABELS[currentPage]}</span>
             </div>
-            <main className="flex-1 overflow-y-auto p-4">
-              {renderPage()}
-            </main>
+            <main className="flex-1 overflow-y-auto p-4">{renderPage()}</main>
           </div>
         )}
       </div>
