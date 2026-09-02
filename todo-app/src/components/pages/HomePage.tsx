@@ -280,26 +280,19 @@ function QuickNote({ user }: { user: User }) {
   }
 
   const insertCheckbox = () => {
-    editorRef.current?.focus()
-    const sel = window.getSelection()
-    if (!sel || !sel.rangeCount) return
-    const range = sel.getRangeAt(0)
-    range.deleteContents()
-    const span = document.createElement('span')
-    span.innerHTML = '☐ '
-    span.style.cursor = 'pointer'
-    span.onclick = (e) => {
-      const el = e.target as HTMLSpanElement
-      el.innerHTML = el.innerHTML.startsWith('☑') ? '☐ ' : '☑ '
-      handleInput()
-    }
-    range.insertNode(span)
-    range.setStartAfter(span)
-    range.setEndAfter(span)
-    sel.removeAllRanges()
-    sel.addRange(range)
-    handleInput()
-  }
+  editorRef.current?.focus()
+  const sel = window.getSelection()
+  if (!sel || !sel.rangeCount) return
+  const range = sel.getRangeAt(0)
+  range.deleteContents()
+  const text = document.createTextNode('☐ ')
+  range.insertNode(text)
+  range.setStartAfter(text)
+  range.setEndAfter(text)
+  sel.removeAllRanges()
+  sel.addRange(range)
+  handleInput()
+}
 
   const HIGHLIGHTS = [
     { color: '#FAE4EC', label: 'Pink' },
@@ -339,6 +332,18 @@ function QuickNote({ user }: { user: User }) {
         </div>
       </div>
       <div ref={editorRef} contentEditable onInput={handleInput}
+  onClick={e => {
+    const sel = window.getSelection()
+    if (!sel || !sel.rangeCount) return
+    const range = sel.getRangeAt(0)
+    const node = range.startContainer
+    if (node.textContent?.startsWith('☐') || node.textContent?.startsWith('☑')) {
+      node.textContent = node.textContent.startsWith('☐')
+        ? node.textContent.replace('☐', '☑')
+        : node.textContent.replace('☑', '☐')
+      handleInput()
+    }
+  }}
         className="flex-1 px-4 py-3 outline-none text-sm overflow-y-auto"
         style={{ color: 'var(--text-primary)', lineHeight: '1.7', minHeight: '140px', maxHeight: '220px' }}
         data-placeholder="Start typing your note..."
