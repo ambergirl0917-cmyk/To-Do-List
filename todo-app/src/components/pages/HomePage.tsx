@@ -549,11 +549,14 @@ const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.(
     setPlannerSlots(slots)
     const todayTaskList = tasks.filter(t => t.section_id === 'todays-tasks')
     setTodayTasks(todayTaskList)
-    setTodayStats({
-      total: todayTaskList.length,
-      done: todayTaskList.filter(t => t.progress === '100%').length,
-      deadlines: deadlines.filter(d => d.due_date === todayStr).length,
-    })
+    const savedDate = localStorage.getItem('done_today_date')
+const today = new Date().toISOString().split('T')[0]
+const savedDone = savedDate === today ? parseInt(localStorage.getItem('done_today') || '0') : 0
+setTodayStats({
+  total: todayTaskList.length,
+  done: savedDone,
+  deadlines: deadlines.filter(d => d.due_date === todayStr).length,
+})
     setLoading(false)
   }
 
