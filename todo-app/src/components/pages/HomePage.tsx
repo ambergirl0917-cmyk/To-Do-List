@@ -236,14 +236,15 @@ function QuickNote({ user }: { user: User }) {
   useEffect(() => { loadNote() }, [user])
 
   const loadNote = async () => {
-  const { data } = await supabase.from('quick_notes').select('*').eq('user_id', user.id).single()
-  if (data && editorRef.current) {
-    if (editorRef.current.innerHTML !== data.content) {
-      editorRef.current.innerHTML = data.content || ''
+    const { data } = await supabase.from('quick_notes').select('*').eq('user_id', user.id).single()
+    if (data && editorRef.current) {
+      if (editorRef.current.innerHTML !== data.content) {
+        editorRef.current.innerHTML = data.content || ''
+      }
+      setNoteId(data.id)
     }
-    setNoteId(data.id)
   }
-}
+
   const handleInput = () => {
     setSaved(false)
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
@@ -280,12 +281,11 @@ function QuickNote({ user }: { user: User }) {
     handleInput()
   }
 
-const insertCheckbox = () => {
-  document.execCommand('insertHTML', false, '<input type="checkbox" style="accent-color:#9A7080;margin-right:6px;cursor:pointer;"> ')
-  handleInput()
-}
-  range.insertNode(span)
-  
+  const insertCheckbox = () => {
+    document.execCommand('insertHTML', false, '<input type="checkbox" style="accent-color:#9A7080;margin-right:6px;cursor:pointer;vertical-align:middle;"> ')
+    handleInput()
+  }
+
   const HIGHLIGHTS = [
     { color: '#FAE4EC', label: 'Pink' },
     { color: '#D8E8F8', label: 'Blue' },
@@ -324,14 +324,6 @@ const insertCheckbox = () => {
         </div>
       </div>
       <div ref={editorRef} contentEditable onInput={handleInput}
-  onMouseDown={e => {
-    const target = e.target as HTMLElement
-    if (target.innerHTML?.includes('☐') || target.innerHTML?.includes('☑')) {
-      e.preventDefault()
-      target.innerHTML = target.innerHTML.startsWith('☑') ? '☐ ' : '☑ '
-      handleInput()
-    }
-  }}
         className="flex-1 px-4 py-3 outline-none text-sm overflow-y-auto"
         style={{ color: 'var(--text-primary)', lineHeight: '1.7', minHeight: '140px', maxHeight: '220px' }}
         data-placeholder="Start typing your note..."
@@ -643,18 +635,18 @@ export default function HomePage({ user, onTaskChange }: Props) {
                 style={{ borderColor: 'var(--divider)', opacity: isDone ? 0.6 : 1, background: days !== null && days <= 2 && !isDone ? 'var(--urgent-today-bg)' : undefined }}>
                 <button
                   onClick={async () => {
-  if (isDone) {
-    updateTask(task.id, { progress: '0%' })
-  } else {
-    setTodayTasks(prev => {
-      const updated = prev.filter(t => t.id !== task.id)
-      setTodayStats(s => ({ ...s, total: updated.length, done: s.done + 1 }))
-      return updated
-    })
-    await supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
-    onTaskChange?.()
-  }
-}}
+                    if (isDone) {
+                      updateTask(task.id, { progress: '0%' })
+                    } else {
+                      setTodayTasks(prev => {
+                        const updated = prev.filter(t => t.id !== task.id)
+                        setTodayStats(s => ({ ...s, total: updated.length, done: s.done + 1 }))
+                        return updated
+                      })
+                      await supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
+                      onTaskChange?.()
+                    }
+                  }}
                   className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
                   style={{ borderColor: 'var(--morandi-pink-text)', background: isDone ? 'var(--morandi-pink-text)' : 'transparent' }}>
                   {isDone && <i className="ti ti-check" style={{ fontSize: '7px', color: 'white' }} />}
@@ -724,9 +716,7 @@ export default function HomePage({ user, onTaskChange }: Props) {
                 <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
                   {Math.floor(slot.duration_minutes / 60) > 0 ? `${Math.floor(slot.duration_minutes / 60)}h` : ''}{slot.duration_minutes % 60 > 0 ? ` ${slot.duration_minutes % 60}m` : ''}
                 </span>
-                <button
-                  onClick={() => transferPlannerTask(slot)}
-                  disabled={isTransferred}
+                <button onClick={() => transferPlannerTask(slot)} disabled={isTransferred}
                   className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
                   style={{
                     background: isTransferred ? 'var(--morandi-linen)' : 'transparent',
