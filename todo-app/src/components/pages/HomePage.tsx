@@ -512,7 +512,12 @@ export default function HomePage({ user, onTaskChange, showQuickAdd: externalSho
   const [allDeadlines, setAllDeadlines] = useState<any[]>([])
   const [plannerSlots, setPlannerSlots] = useState<PlannerBlock[]>([])
   const [loading, setLoading] = useState(true)
-  const [todayStats, setTodayStats] = useState({ total: 0, done: parseInt(sessionStorage.getItem('done_today') || '0'), deadlines: 0 })
+  const [todayStats, setTodayStats] = useState(() => {
+  const savedDate = localStorage.getItem('done_today_date')
+  const today = new Date().toISOString().split('T')[0]
+  const done = savedDate === today ? parseInt(localStorage.getItem('done_today') || '0') : 0
+  return { total: 0, done, deadlines: 0 }
+})
   const [internalShowQuickAdd, setInternalShowQuickAdd] = useState(false)
 const showQuickAdd = externalShowQuickAdd || internalShowQuickAdd
 const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.() }
@@ -652,7 +657,8 @@ const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.(
                         const updated = prev.filter(t => t.id !== task.id)
                         setTodayStats(s => {
   const newDone = s.done + 1
-  sessionStorage.setItem('done_today', String(newDone))
+  localStorage.setItem('done_today', String(newDone))
+localStorage.setItem('done_today_date', new Date().toISOString().split('T')[0])
   return { ...s, total: updated.length, done: newDone }
 })
                         return updated
