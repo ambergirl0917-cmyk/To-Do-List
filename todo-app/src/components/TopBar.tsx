@@ -24,7 +24,6 @@ export default function TopBar({
 }: TopBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showUrgent, setShowUrgent] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
   const urgentRef = useRef<HTMLDivElement>(null)
 
   const avatar = user.user_metadata?.avatar_url
@@ -35,7 +34,6 @@ export default function TopBar({
 
   const todayStr = new Date().toISOString().split('T')[0]
 
-  // Get Monday to Sunday of current week
   const now = new Date()
   const day = now.getDay()
   const monday = new Date(now)
@@ -43,17 +41,17 @@ export default function TopBar({
   monday.setHours(0, 0, 0, 0)
   const sunday = new Date(monday)
   sunday.setDate(monday.getDate() + 6)
-  sunday.setHours(23, 59, 59, 999)
   const mondayStr = monday.toISOString().split('T')[0]
   const sundayStr = sunday.toISOString().split('T')[0]
 
   const totalUrgent = urgentTasks.length + urgentDeadlines.length
-  const totalWeek = upcomingTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr).length +
-    upcomingDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr).length +
-    urgentTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr).length +
-    urgentDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr).length
+  const totalWeek = [
+    ...upcomingTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr),
+    ...upcomingDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr),
+    ...urgentTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr),
+    ...urgentDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr),
+  ].length
 
-  // Close on outside click
   useEffect(() => {
     const handle = (e: MouseEvent) => {
       if (urgentRef.current && !urgentRef.current.contains(e.target as Node)) {
@@ -64,17 +62,16 @@ export default function TopBar({
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
-  // All urgent items sorted by date
   const allUrgentItems = [
-  ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: true })),
-  ...urgentDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: true })),
-  ...upcomingTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: false })),
-  ...upcomingDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: false })),
-].sort((a, b) => {
-  if (!a.date) return 1
-  if (!b.date) return -1
-  return a.date.localeCompare(b.date)
-})
+    ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: true })),
+    ...urgentDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: true })),
+    ...upcomingTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: false })),
+    ...upcomingDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: false })),
+  ].sort((a, b) => {
+    if (!a.date) return 1
+    if (!b.date) return -1
+    return a.date.localeCompare(b.date)
+  })
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return ''
@@ -96,8 +93,7 @@ export default function TopBar({
         My To-Do List
       </span>
 
-      {/* Search */}
-      <div className={`${showSearch ? 'flex' : 'hidden sm:flex'} flex-1 items-center rounded-lg px-3 py-1.5 gap-2 max-w-xs`}
+      <div className="hidden sm:flex flex-1 items-center rounded-lg px-3 py-1.5 gap-2 max-w-xs"
         style={{ background: 'var(--morandi-pink)' }}>
         <i className="ti ti-search" style={{ fontSize: '13px', color: 'var(--morandi-pink-text)' }} />
         <input value={searchQuery} onChange={e => onSearchChange(e.target.value)}
@@ -107,7 +103,6 @@ export default function TopBar({
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
-        {/* Quick add */}
         <button onClick={onQuickAdd}
           className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
           style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
@@ -115,7 +110,6 @@ export default function TopBar({
           Quick add
         </button>
 
-        {/* This week pill */}
         {totalWeek > 0 && (
           <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
             style={{ background: 'var(--morandi-blue)', color: 'var(--morandi-blue-text)' }}>
@@ -124,7 +118,6 @@ export default function TopBar({
           </div>
         )}
 
-        {/* Urgent pill */}
         <div className="relative" ref={urgentRef}>
           <button onClick={() => setShowUrgent(s => !s)}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-colors"
@@ -137,7 +130,6 @@ export default function TopBar({
             {totalUrgent > 0 ? `${totalUrgent} urgent` : 'All clear'}
           </button>
 
-          {/* Urgent popup */}
           {showUrgent && (
             <div className="absolute right-0 top-10 rounded-xl shadow-xl border z-50 w-72 animate-slideDown overflow-hidden"
               style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
@@ -148,14 +140,15 @@ export default function TopBar({
                   {allUrgentItems.map((item, i) => (
                     <div key={`${item.type}-${item.id}-${i}`}
                       className="flex items-center gap-2.5 px-3 py-2 mx-1.5 my-0.5 rounded-lg"
-                      style={{ background: item.isUrgent ? 'var(--urgent-today-bg)' : 'var(--urgent-week-bg)' }}>
+                      style={{ background: item.isUrgent ? 'var(--urgent-today-bg)' : '#FEF9E8' }}>
                       <i className={item.type === 'deadline' ? 'ti ti-calendar-event' : 'ti ti-circle-check'}
-style={{ fontSize: '13px', color: item.isUrgent ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)', flexShrink: 0 }}                      <span className="text-sm flex-1 truncate"
-                        style={{ color: item.isToday ? '#8A6060' : '#786050' }}>
+                        style={{ fontSize: '13px', color: item.isUrgent ? 'var(--urgent-today-text)' : '#B08830', flexShrink: 0 }} />
+                      <span className="text-sm flex-1 truncate"
+                        style={{ color: item.isUrgent ? '#8A6060' : '#786050' }}>
                         {item.title}
                       </span>
                       <span className="text-xs font-medium flex-shrink-0"
-                        style={{ color: item.isToday ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)' }}>
+                        style={{ color: item.isUrgent ? 'var(--urgent-today-text)' : '#B08830' }}>
                         {formatDate(item.date)}
                       </span>
                     </div>
@@ -166,7 +159,6 @@ style={{ fontSize: '13px', color: item.isUrgent ? 'var(--urgent-today-text)' : '
           )}
         </div>
 
-        {/* Avatar */}
         <div className="relative">
           <button onClick={() => setShowUserMenu(s => !s)}
             className="w-7 h-7 rounded-full overflow-hidden border-2"
