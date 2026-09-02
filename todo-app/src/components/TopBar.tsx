@@ -150,8 +150,7 @@ export default function TopBar({
                       className="flex items-center gap-2.5 px-3 py-2 mx-1.5 my-0.5 rounded-lg"
                       style={{ background: item.isUrgent ? 'var(--urgent-today-bg)' : 'var(--urgent-week-bg)' }}>
                       <i className={item.type === 'deadline' ? 'ti ti-calendar-event' : 'ti ti-circle-check'}
-                        style={{ fontSize: '13px', color: item.isToday ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)', flexShrink: 0 }} />
-                      <span className="text-sm flex-1 truncate"
+style={{ fontSize: '13px', color: item.isUrgent ? 'var(--urgent-today-text)' : 'var(--urgent-week-text)', flexShrink: 0 }}                      <span className="text-sm flex-1 truncate"
                         style={{ color: item.isToday ? '#8A6060' : '#786050' }}>
                         {item.title}
                       </span>
