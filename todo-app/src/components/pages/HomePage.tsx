@@ -177,7 +177,6 @@ function MiniCalendar({ tasks, deadlines }: { tasks: Task[]; deadlines: any[] })
         })}
       </div>
 
-      {/* Expanded day popup */}
       {expandedDate && (
         <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4" onClick={() => setExpandedDate(null)}>
           <div className="rounded-2xl shadow-2xl p-5 w-full max-w-sm" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
@@ -422,8 +421,6 @@ function QuickAddModal({ user, onClose, onTaskAdded }: { user: User; onClose: ()
           <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Quick Add</h3>
           <button onClick={onClose} className="text-xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
         </div>
-
-        {/* Type toggle */}
         <div className="flex rounded-xl p-1 gap-1 mb-5" style={{ background: 'var(--morandi-pink)' }}>
           <button onClick={() => setType('task')}
             className="flex-1 py-2 rounded-lg text-xs font-medium transition-colors"
@@ -436,7 +433,6 @@ function QuickAddModal({ user, onClose, onTaskAdded }: { user: User; onClose: ()
             📅 Planner Block
           </button>
         </div>
-
         {type === 'task' ? (
           <div className="space-y-4">
             <div>
@@ -444,8 +440,7 @@ function QuickAddModal({ user, onClose, onTaskAdded }: { user: User; onClose: ()
               <input value={taskName} onChange={e => setTaskName(e.target.value)}
                 placeholder="What do you need to do?"
                 className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
-                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }}
-                autoFocus />
+                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} autoFocus />
             </div>
             <div>
               <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Section *</label>
@@ -479,8 +474,7 @@ function QuickAddModal({ user, onClose, onTaskAdded }: { user: User; onClose: ()
               <input value={blockTitle} onChange={e => setBlockTitle(e.target.value)}
                 placeholder="What's this block for?"
                 className="w-full text-sm px-3 py-2.5 rounded-xl outline-none"
-                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }}
-                autoFocus />
+                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} autoFocus />
             </div>
             <div>
               <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-secondary)' }}>Date *</label>
@@ -514,7 +508,6 @@ function QuickAddModal({ user, onClose, onTaskAdded }: { user: User; onClose: ()
             </div>
           </div>
         )}
-
         <button onClick={handleSave} disabled={saving}
           className="w-full mt-5 py-2.5 rounded-xl text-sm font-medium"
           style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
@@ -537,14 +530,14 @@ export default function HomePage({ user, onTaskChange }: Props) {
   const [transferredSlots, setTransferredSlots] = useState<string[]>([])
 
   const todayStr = new Date().toISOString().split('T')[0]
-  const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' })
 
   useEffect(() => { fetchAll() }, [user])
+
   useEffect(() => {
-  const handleFocus = () => fetchAll()
-  window.addEventListener('focus', handleFocus)
-  return () => window.removeEventListener('focus', handleFocus)
-}, [])
+    const handleFocus = () => fetchAll()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   const fetchAll = async () => {
     const [tasksRes, deadlinesRes, plannerRes] = await Promise.all([
@@ -569,20 +562,20 @@ export default function HomePage({ user, onTaskChange }: Props) {
   }
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-  setTodayTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
-  await supabase.from('tasks').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
-  if (updates.progress === '100%') {
-    const task = todayTasks.find(t => t.id === id)
-    if (task) {
-      const matchingBlock = plannerSlots.find(s => s.title === task.task && s.date === todayStr)
-      if (matchingBlock) {
-        await supabase.from('summer_blocks').update({ is_done: true }).eq('id', matchingBlock.id)
-        setPlannerSlots(prev => prev.map(s => s.id === matchingBlock.id ? { ...s, is_done: true } : s))
+    setTodayTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+    await supabase.from('tasks').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
+    if (updates.progress === '100%') {
+      const task = todayTasks.find(t => t.id === id)
+      if (task) {
+        const matchingBlock = plannerSlots.find(s => s.title === task.task && s.date === todayStr)
+        if (matchingBlock) {
+          await supabase.from('summer_blocks').update({ is_done: true }).eq('id', matchingBlock.id)
+          setPlannerSlots(prev => prev.map(s => s.id === matchingBlock.id ? { ...s, is_done: true } : s))
+        }
       }
     }
+    onTaskChange?.()
   }
-  onTaskChange?.()
-}
 
   const removeFromToday = async (id: string) => {
     setTodayTasks(prev => prev.filter(t => t.id !== id))
@@ -590,18 +583,18 @@ export default function HomePage({ user, onTaskChange }: Props) {
     onTaskChange?.()
   }
 
- const transferPlannerTask = async (slot: PlannerBlock) => {
-  if (transferredSlots.includes(slot.id)) return
-  if (todayTasks.some(t => t.task === slot.title)) return
-  setTransferredSlots(prev => [...prev, slot.id])
-  const { data } = await supabase.from('tasks').insert({
-    user_id: user.id, section_id: 'todays-tasks', task: slot.title,
-    notes: slot.notes || '', due_date: null, progress: '0%',
-    position: todayTasks.length, is_archived: false, checklist: slot.checklist || [],
-    reminder_days: null, is_recurring: false, recur_interval: null,
-  }).select().single()
-  if (data) { setTodayTasks(prev => [...prev, data]); onTaskChange?.() }
-}
+  const transferPlannerTask = async (slot: PlannerBlock) => {
+    if (transferredSlots.includes(slot.id)) return
+    if (todayTasks.some(t => t.task === slot.title)) return
+    setTransferredSlots(prev => [...prev, slot.id])
+    const { data } = await supabase.from('tasks').insert({
+      user_id: user.id, section_id: 'todays-tasks', task: slot.title,
+      notes: slot.notes || '', due_date: null, progress: '0%',
+      position: todayTasks.length, is_archived: false, checklist: slot.checklist || [],
+      reminder_days: null, is_recurring: false, recur_interval: null,
+    }).select().single()
+    if (data) { setTodayTasks(prev => [...prev, data]); onTaskChange?.() }
+  }
 
   const transferAllPlannerTasks = async () => {
     for (const slot of todayPlannerSlots) await transferPlannerTask(slot)
@@ -655,16 +648,16 @@ export default function HomePage({ user, onTaskChange }: Props) {
             return (
               <div key={task.id} className="flex items-center gap-2 px-4 py-2.5 border-b"
                 style={{ borderColor: 'var(--divider)', opacity: isDone ? 0.6 : 1, background: days !== null && days <= 2 && !isDone ? 'var(--urgent-today-bg)' : undefined }}>
-                <button onClick={() => {
-  if (isDone) {
-    updateTask(task.id, { progress: '0%' })
-  } else {
-    // Archive it like TaskRow does
-    setTodayTasks(prev => prev.filter(t => t.id !== task.id))
-    supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
-    onTaskChange?.()
-  }
-}}
+                <button
+                  onClick={() => {
+                    if (isDone) {
+                      updateTask(task.id, { progress: '0%' })
+                    } else {
+                      setTodayTasks(prev => prev.filter(t => t.id !== task.id))
+                      supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
+                      onTaskChange?.()
+                    }
+                  }}
                   className="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
                   style={{ borderColor: 'var(--morandi-pink-text)', background: isDone ? 'var(--morandi-pink-text)' : 'transparent' }}>
                   {isDone && <i className="ti ti-check" style={{ fontSize: '7px', color: 'white' }} />}
@@ -725,35 +718,33 @@ export default function HomePage({ user, onTaskChange }: Props) {
         {todayPlannerSlots.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm italic" style={{ color: 'var(--text-muted)' }}>No planned tasks for today</div>
         ) : (
-          todayPlannerSlots.map(slot => (
-            <div key={slot.id} className="flex items-center gap-3 px-4 py-2.5 border-b" style={{ borderColor: 'var(--divider)' }}>
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: slot.color || 'var(--morandi-pink)' }} />
-              <span className="text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--text-primary)' }}>{slot.title || 'Untitled'}</span>
-              <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
-                {Math.floor(slot.duration_minutes / 60) > 0 ? `${Math.floor(slot.duration_minutes / 60)}h` : ''}{slot.duration_minutes % 60 > 0 ? ` ${slot.duration_minutes % 60}m` : ''}
-              </span>
-              <button onClick={() => transferPlannerTask(slot)}
-                className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
-                style={{ border: '0.5px solid var(--morandi-pink-text)', color: 'var(--morandi-pink-text)' }}>
+          todayPlannerSlots.map(slot => {
+            const isTransferred = transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title)
+            return (
+              <div key={slot.id} className="flex items-center gap-3 px-4 py-2.5 border-b" style={{ borderColor: 'var(--divider)' }}>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: slot.color || 'var(--morandi-pink)' }} />
+                <span className="text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--text-primary)' }}>{slot.title || 'Untitled'}</span>
+                <span className="text-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+                  {Math.floor(slot.duration_minutes / 60) > 0 ? `${Math.floor(slot.duration_minutes / 60)}h` : ''}{slot.duration_minutes % 60 > 0 ? ` ${slot.duration_minutes % 60}m` : ''}
+                </span>
                 <button
-  onClick={() => transferPlannerTask(slot)}
-  disabled={transferredSlots.includes(slot.id) || transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title)
-  className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
-  style={{
-    background: transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? 'var(--morandi-linen)' : 'transparent',
-    border: '0.5px solid var(--morandi-pink-text)',
-    color: transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? 'var(--text-muted)' : 'var(--morandi-pink-text)',
-    cursor: transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? 'default' : 'pointer'
-  }}>
-  {transferredSlots.includes(slot.id) || todayTasks.some(t => t.task === slot.title) ? '✓' : '→ Today'}
-</button>
-              </button>
-            </div>
-          ))
+                  onClick={() => transferPlannerTask(slot)}
+                  disabled={isTransferred}
+                  className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
+                  style={{
+                    background: isTransferred ? 'var(--morandi-linen)' : 'transparent',
+                    border: `0.5px solid ${isTransferred ? 'var(--morandi-linen-text)' : 'var(--morandi-pink-text)'}`,
+                    color: isTransferred ? 'var(--text-muted)' : 'var(--morandi-pink-text)',
+                    cursor: isTransferred ? 'default' : 'pointer'
+                  }}>
+                  {isTransferred ? '✓' : '→ Today'}
+                </button>
+              </div>
+            )
+          })
         )}
       </div>
 
-      {/* QUICK ADD MODAL */}
       {showQuickAdd && (
         <QuickAddModal user={user} onClose={() => setShowQuickAdd(false)} onTaskAdded={() => { fetchAll(); onTaskChange?.() }} />
       )}
