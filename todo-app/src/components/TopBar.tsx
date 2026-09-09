@@ -24,6 +24,8 @@ export default function TopBar({
 }: TopBarProps) {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showUrgent, setShowUrgent] = useState(false)
+const [showWeek, setShowWeek] = useState(false)
+const weekRef = useRef<HTMLDivElement>(null)
   const urgentRef = useRef<HTMLDivElement>(null)
 
   const avatar = user.user_metadata?.avatar_url
