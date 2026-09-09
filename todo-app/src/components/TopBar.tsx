@@ -62,12 +62,14 @@ export default function TopBar({
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
-  const allUrgentItems = [
-    ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: true })),
-    ...urgentDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: true })),
-    ...upcomingTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: false })),
-    ...upcomingDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: false })),
-  ].sort((a, b) => {
+ const allUrgentItems = [
+  ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: true })),
+  ...urgentDeadlines.map(d => ({ type: 'deadline' as const, id: d.id, title: `${d.subject}: ${d.task}`, date: d.due_date, isUrgent: true })),
+].sort((a, b) => {
+  if (!a.date) return 1
+  if (!b.date) return -1
+  return a.date.localeCompare(b.date)
+}).sort((a, b) => {
     if (!a.date) return 1
     if (!b.date) return -1
     return a.date.localeCompare(b.date)
