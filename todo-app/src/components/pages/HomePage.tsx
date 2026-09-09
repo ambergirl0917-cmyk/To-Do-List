@@ -74,7 +74,7 @@ function FloatingTimer() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-6 right-6 z-40 rounded-full shadow-lg flex items-center gap-2 px-4 py-2.5"
+        className="fixed bottom-6 left-6 z-40 rounded-full shadow-lg flex items-center gap-2 px-4 py-2.5"
         style={{ background: running ? 'var(--morandi-pink-text)' : 'var(--morandi-pink)', color: running ? 'white' : 'var(--morandi-pink-text)' }}>
         <i className={`ti ${running ? 'ti-player-pause' : 'ti-clock'}`} style={{ fontSize: '14px' }} />
         <span className="text-sm font-medium">{format(secondsLeft)}</span>
@@ -482,10 +482,17 @@ function CompletionChart({ user }: { user: User }) {
   const fetchData = async () => {
     let startDate: string, endDate: string
     if (view === '7days') {
-  endDate = new Date().toISOString().split('T')[0]
-  const start = new Date(endDate + 'T00:00:00')
-  start.setDate(start.getDate() - 6)
-  startDate = start.toISOString().split('T')[0]
+  const now = new Date()
+const y = now.getFullYear()
+const mo = String(now.getMonth() + 1).padStart(2, '0')
+const dy = String(now.getDate()).padStart(2, '0')
+endDate = `${y}-${mo}-${dy}`
+const start = new Date(now)
+start.setDate(start.getDate() - 6)
+const sy = start.getFullYear()
+const smo = String(start.getMonth() + 1).padStart(2, '0')
+const sdy = String(start.getDate()).padStart(2, '0')
+startDate = `${sy}-${smo}-${sdy}`
 } else {
       startDate = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, '0')}-01`
       const lastDay = new Date(currentMonth.year, currentMonth.month + 1, 0).getDate()
@@ -574,7 +581,7 @@ function CompletionChart({ user }: { user: User }) {
                 onClick={() => d.count > 0 && setSelectedDay(d)}
                 style={{
                   width: '100%', height: `${height}px`,
-                  background: isToday ? '#E8A0B0' : '#EEC4CC',
+                  background: isToday ? '#EEC4CC' : '#FAE4EC',
                   borderRadius: '6px 6px 0 0',
                   cursor: d.count > 0 ? 'pointer' : 'default',
                   border: 'none', transition: 'opacity 0.15s'
