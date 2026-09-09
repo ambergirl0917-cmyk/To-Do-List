@@ -20,7 +20,7 @@ const SECTIONS = [
   { id: 'tok', name: 'TOK' },
   { id: 'ee', name: 'EE' },
   { id: 'cas', name: 'CAS' },
-  { id: 'sat', name: 'SAT' },
+  
   { id: 'lirae', name: 'Lirae' },
   { id: 'competition-1', name: 'Competition 1' },
   { id: 'competition-2', name: 'Competition 2' },
