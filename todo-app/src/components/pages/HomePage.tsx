@@ -252,6 +252,7 @@ function QuickNote({ user }: { user: User }) {
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(async () => {
       const content = editorRef.current?.innerHTML || ''
+if (!content || content === '<br>') return
       if (noteId) {
         await supabase.from('quick_notes').update({ content, updated_at: new Date().toISOString() }).eq('id', noteId)
       } else {
