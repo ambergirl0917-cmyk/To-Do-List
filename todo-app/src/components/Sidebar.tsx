@@ -18,7 +18,7 @@ const NAV_ITEMS = [
     { id: 'ibcore' as PageId, label: 'TOK / EE / CAS', icon: 'ti-world' },
   ]},
   { section: 'Other', items: [
-    { id: 'sat' as PageId, label: 'SAT', icon: 'ti-pencil' },
+    
     { id: 'extracurricular' as PageId, label: 'Extracurricular', icon: 'ti-star' },
     { id: 'college' as PageId, label: 'College App', icon: 'ti-school' },
     { id: 'planner' as PageId, label: 'Planner', icon: 'ti-calendar' },
