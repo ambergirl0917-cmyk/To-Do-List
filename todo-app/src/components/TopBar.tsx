@@ -114,12 +114,43 @@ const weekRef = useRef<HTMLDivElement>(null)
         </button>
 
         {totalWeek > 0 && (
-          <div className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
-            style={{ background: 'var(--morandi-blue)', color: 'var(--morandi-blue-text)' }}>
-            <i className="ti ti-calendar-week" style={{ fontSize: '12px' }} />
-            {totalWeek} this week
-          </div>
-        )}
+  <div className="relative" ref={weekRef}>
+    <button
+      onClick={() => setShowWeek(s => !s)}
+      className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full"
+      style={{ background: 'var(--morandi-blue)', color: 'var(--morandi-blue-text)' }}>
+      <i className="ti ti-calendar-week" style={{ fontSize: '12px' }} />
+      {totalWeek} this week
+    </button>
+    {showWeek && (
+      <div className="absolute right-0 top-10 rounded-xl shadow-xl border z-50 w-72 animate-slideDown overflow-hidden"
+        style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+        <div className="py-1.5 max-h-80 overflow-y-auto">
+          {[
+            ...urgentTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr)
+              .map(t => ({ type: 'task' as const, title: t.task, date: t.due_date })),
+            ...urgentDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr)
+              .map(d => ({ type: 'deadline' as const, title: `${d.subject}: ${d.task}`, date: d.due_date })),
+            ...upcomingTasks.filter(t => t.due_date && t.due_date >= mondayStr && t.due_date <= sundayStr)
+              .map(t => ({ type: 'task' as const, title: t.task, date: t.due_date })),
+            ...upcomingDeadlines.filter(d => d.due_date && d.due_date >= mondayStr && d.due_date <= sundayStr)
+              .map(d => ({ type: 'deadline' as const, title: `${d.subject}: ${d.task}`, date: d.due_date })),
+          ].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map((item, i) => (
+            <div key={i} className="flex items-center gap-2.5 px-3 py-2 mx-1.5 my-0.5 rounded-lg"
+              style={{ background: 'var(--morandi-blue)' }}>
+              <i className={item.type === 'deadline' ? 'ti ti-calendar-event' : 'ti ti-circle-check'}
+                style={{ fontSize: '13px', color: 'var(--morandi-blue-text)', flexShrink: 0 }} />
+              <span className="text-sm flex-1 break-words" style={{ color: 'var(--morandi-blue-text)' }}>{item.title}</span>
+              <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--morandi-blue-text)' }}>
+                {formatDate(item.date)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
         <div className="relative" ref={urgentRef}>
           <button onClick={() => setShowUrgent(s => !s)}
