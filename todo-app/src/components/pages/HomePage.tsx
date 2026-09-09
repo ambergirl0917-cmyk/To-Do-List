@@ -22,10 +22,11 @@ const PROGRESS_STYLES: Record<Progress, { bg: string; text: string }> = {
   '100%': { bg: '#C8D8CC', text: '#507060' },
 }
 
-// ============ TIMER ============
+// ============ FLOATING TIMER ============
 interface TimerPreset { id: string; name: string; minutes: number }
 
-function Timer() {
+function FloatingTimer() {
+  const [open, setOpen] = useState(false)
   const [presets, setPresets] = useState<TimerPreset[]>(() => {
     try { return JSON.parse(localStorage.getItem('timer_presets') || '[]') } catch { return [] }
   })
@@ -69,39 +70,56 @@ function Timer() {
   }
 
   return (
-    <div className="rounded-xl border p-4 flex flex-col" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Timer</span>
-      </div>
-      <div className="text-center mb-3">
-        <div className="text-3xl font-medium tracking-widest" style={{ color: 'var(--text-primary)' }}>{format(secondsLeft)}</div>
-        {activePreset && <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{activePreset.name}</div>}
-      </div>
-      <div className="flex justify-center gap-2 mb-3">
-        <button onClick={() => setRunning(r => !r)} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--morandi-pink)' }}>
-          <i className={`ti ${running ? 'ti-player-pause' : 'ti-player-play'}`} style={{ fontSize: '14px', color: 'var(--morandi-pink-text)' }} />
-        </button>
-        <button onClick={reset} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'var(--morandi-sand)' }}>
-          <i className="ti ti-refresh" style={{ fontSize: '14px', color: 'var(--morandi-sand-text)' }} />
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {presets.map(p => (
-          <div key={p.id} className="flex items-center gap-1 rounded-lg px-2 py-1" style={{ background: activePreset?.id === p.id ? 'var(--morandi-pink)' : 'var(--morandi-sand)' }}>
-            <button onClick={() => loadPreset(p)} className="text-xs" style={{ color: activePreset?.id === p.id ? 'var(--morandi-pink-text)' : 'var(--morandi-sand-text)' }}>{p.name} {p.minutes}m</button>
-            <button onClick={() => deletePreset(p.id)} className="text-xs opacity-50 hover:opacity-100" style={{ color: 'var(--morandi-pink-text)' }}>×</button>
+    <>
+      {/* Floating button */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="fixed bottom-6 right-6 z-40 rounded-full shadow-lg flex items-center gap-2 px-4 py-2.5"
+        style={{ background: running ? 'var(--morandi-pink-text)' : 'var(--morandi-pink)', color: running ? 'white' : 'var(--morandi-pink-text)' }}>
+        <i className={`ti ${running ? 'ti-player-pause' : 'ti-clock'}`} style={{ fontSize: '14px' }} />
+        <span className="text-sm font-medium">{format(secondsLeft)}</span>
+      </button>
+
+      {/* Timer modal */}
+      {open && (
+        <div className="fixed inset-0 bg-black/20 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="rounded-2xl shadow-2xl w-full max-w-sm p-5" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Timer</span>
+              <button onClick={() => setOpen(false)} className="text-xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+            </div>
+            <div className="text-center mb-4">
+              <div className="text-4xl font-medium tracking-widest" style={{ color: 'var(--text-primary)' }}>{format(secondsLeft)}</div>
+              {activePreset && <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{activePreset.name}</div>}
+            </div>
+            <div className="flex justify-center gap-3 mb-4">
+              <button onClick={() => setRunning(r => !r)} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--morandi-pink)' }}>
+                <i className={`ti ${running ? 'ti-player-pause' : 'ti-player-play'}`} style={{ fontSize: '15px', color: 'var(--morandi-pink-text)' }} />
+              </button>
+              <button onClick={reset} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--morandi-sand)' }}>
+                <i className="ti ti-refresh" style={{ fontSize: '15px', color: 'var(--morandi-sand-text)' }} />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {presets.map(p => (
+                <div key={p.id} className="flex items-center gap-1 rounded-lg px-2 py-1" style={{ background: activePreset?.id === p.id ? 'var(--morandi-pink)' : 'var(--morandi-sand)' }}>
+                  <button onClick={() => loadPreset(p)} className="text-xs" style={{ color: activePreset?.id === p.id ? 'var(--morandi-pink-text)' : 'var(--morandi-sand-text)' }}>{p.name} {p.minutes}m</button>
+                  <button onClick={() => deletePreset(p.id)} className="text-xs opacity-50 hover:opacity-100" style={{ color: 'var(--morandi-pink-text)' }}>×</button>
+                </div>
+              ))}
+              <button onClick={() => setShowAdd(s => !s)} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--morandi-linen)', color: 'var(--morandi-linen-text)' }}>+ Add</button>
+            </div>
+            {showAdd && (
+              <div className="flex gap-1.5">
+                <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name..." className="flex-1 text-xs px-2 py-1.5 rounded-lg outline-none" style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+                <input value={newMinutes} onChange={e => setNewMinutes(e.target.value)} placeholder="Min" type="number" className="w-12 text-xs px-2 py-1.5 rounded-lg outline-none text-center" style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+                <button onClick={savePreset} className="text-xs px-2 py-1.5 rounded-lg text-white" style={{ background: 'var(--morandi-pink-text)' }}>Save</button>
+              </div>
+            )}
           </div>
-        ))}
-        <button onClick={() => setShowAdd(s => !s)} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--morandi-linen)', color: 'var(--morandi-linen-text)' }}>+ Add</button>
-      </div>
-      {showAdd && (
-        <div className="flex gap-1.5">
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name..." className="flex-1 text-xs px-2 py-1.5 rounded-lg outline-none" style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
-          <input value={newMinutes} onChange={e => setNewMinutes(e.target.value)} placeholder="Min" type="number" className="w-12 text-xs px-2 py-1.5 rounded-lg outline-none text-center" style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
-          <button onClick={savePreset} className="text-xs px-2 py-1.5 rounded-lg text-white" style={{ background: 'var(--morandi-pink-text)' }}>Save</button>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -134,17 +152,17 @@ function MiniCalendar({ tasks, deadlines }: { tasks: Task[]; deadlines: any[] })
     <div className="rounded-xl border p-4" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => setCurrentMonth(m => { const nm = m.month - 1; return nm < 0 ? { year: m.year - 1, month: 11 } : { ...m, month: nm } })} className="text-sm" style={{ color: 'var(--text-muted)' }}>‹</button>
+          <button onClick={() => setCurrentMonth(m => { const nm = m.month - 1; return nm < 0 ? { year: m.year - 1, month: 11 } : { ...m, month: nm } })} className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>‹</button>
           <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
             {new Date(currentMonth.year, currentMonth.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
           </span>
-          <button onClick={() => setCurrentMonth(m => { const nm = m.month + 1; return nm > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: nm } })} className="text-sm" style={{ color: 'var(--text-muted)' }}>›</button>
+          <button onClick={() => setCurrentMonth(m => { const nm = m.month + 1; return nm > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: nm } })} className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>›</button>
         </div>
       </div>
       <div className="grid grid-cols-7 text-center mb-1">
         {DAY_NAMES.map((d, i) => <span key={i} className="text-xs" style={{ color: 'var(--text-muted)' }}>{d}</span>)}
       </div>
-      <div className="grid grid-cols-7 gap-px relative">
+      <div className="grid grid-cols-7 gap-px">
         {days.map((dateStr, i) => {
           if (!dateStr) return <div key={i} />
           const dCount = getDeadlineCount(dateStr)
@@ -228,6 +246,118 @@ function MiniCalendar({ tasks, deadlines }: { tasks: Task[]; deadlines: any[] })
   )
 }
 
+// ============ COUNTDOWN ============
+interface Countdown { id: string; user_id: string; name: string; due_date: string; color: string; position: number }
+
+const COUNTDOWN_COLORS = [
+  '#FAE4EC', '#F5EEE0', '#D8E8F8', '#C8D8CC', '#DDD0E0', '#EDE8DC'
+]
+
+function CountdownSection({ user }: { user: User }) {
+  const [countdowns, setCountdowns] = useState<Countdown[]>([])
+  const [showAdd, setShowAdd] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newDate, setNewDate] = useState('')
+  const [newColor, setNewColor] = useState('#FAE4EC')
+
+  useEffect(() => { fetchCountdowns() }, [user])
+
+  const fetchCountdowns = async () => {
+    const { data } = await supabase.from('countdowns').select('*').eq('user_id', user.id).order('due_date')
+    if (data) setCountdowns(data)
+  }
+
+  const addCountdown = async () => {
+    if (!newName.trim() || !newDate) return
+    const { data } = await supabase.from('countdowns').insert({
+      user_id: user.id, name: newName.trim(), due_date: newDate, color: newColor, position: countdowns.length
+    }).select().single()
+    if (data) { setCountdowns(prev => [...prev, data]); setShowAdd(false); setNewName(''); setNewDate('') }
+  }
+
+  const deleteCountdown = async (id: string) => {
+    setCountdowns(prev => prev.filter(c => c.id !== id))
+    await supabase.from('countdowns').delete().eq('id', id)
+  }
+
+  const getDaysLeft = (dateStr: string) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const due = new Date(dateStr + 'T00:00:00')
+    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  }
+
+  const getTextColor = (bg: string) => {
+    const map: Record<string, string> = {
+      '#FAE4EC': '#9A7080', '#F5EEE0': '#907860', '#D8E8F8': '#5878A0',
+      '#C8D8CC': '#507060', '#DDD0E0': '#706080', '#EDE8DC': '#807868'
+    }
+    return map[bg] || '#6E6068'
+  }
+
+  if (countdowns.length === 0 && !showAdd) {
+    return (
+      <div className="rounded-xl border p-4 flex items-center justify-center" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)', minHeight: '120px' }}>
+        <button onClick={() => setShowAdd(true)} className="text-sm" style={{ color: 'var(--text-muted)' }}>+ Add countdown</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border p-4" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Countdowns</span>
+        <button onClick={() => setShowAdd(s => !s)} className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>+ Add</button>
+      </div>
+
+      {showAdd && (
+        <div className="mb-3 p-3 rounded-xl space-y-2" style={{ background: 'var(--bg)', border: '0.5px solid var(--card-border)' }}>
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Event name..."
+            className="w-full text-sm px-3 py-2 rounded-lg outline-none"
+            style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+          <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
+            className="w-full text-sm px-3 py-2 rounded-lg outline-none"
+            style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }} />
+          <div className="flex gap-2">
+            {COUNTDOWN_COLORS.map(c => (
+              <button key={c} onClick={() => setNewColor(c)}
+                className="w-6 h-6 rounded-full border-2 transition-transform"
+                style={{ background: c, borderColor: newColor === c ? '#888' : 'transparent', transform: newColor === c ? 'scale(1.1)' : 'scale(1)' }} />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={addCountdown} className="flex-1 text-xs py-1.5 rounded-lg text-white" style={{ background: 'var(--morandi-pink-text)' }}>Add</button>
+            <button onClick={() => setShowAdd(false)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--morandi-linen)', color: 'var(--text-muted)' }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${Math.min(countdowns.length, 3)}, 1fr)` }}>
+        {countdowns.map(c => {
+          const days = getDaysLeft(c.due_date)
+          const textColor = getTextColor(c.color)
+          const due = new Date(c.due_date + 'T00:00:00')
+          return (
+            <div key={c.id} className="rounded-xl p-4 text-center relative group"
+              style={{ background: c.color }}>
+              <button onClick={() => deleteCountdown(c.id)}
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-sm transition-opacity"
+                style={{ color: textColor }}>×</button>
+              <p className="text-xs font-medium mb-0.5 truncate" style={{ color: textColor }}>{c.name}</p>
+              <p className="text-xs mb-3" style={{ color: textColor, opacity: 0.7 }}>
+                {due.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+              <p className="text-4xl font-medium mb-0.5" style={{ color: textColor, lineHeight: 1 }}>
+                {days < 0 ? '0' : days}
+              </p>
+              <p className="text-xs" style={{ color: textColor, opacity: 0.7 }}>{days < 0 ? 'passed' : 'days left'}</p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ============ QUICK NOTE ============
 function QuickNote({ user }: { user: User }) {
   const editorRef = useRef<HTMLDivElement>(null)
@@ -238,21 +368,21 @@ function QuickNote({ user }: { user: User }) {
   useEffect(() => { loadNote() }, [user])
 
   const loadNote = async () => {
-  const { data } = await supabase.from('quick_notes').select('*').eq('user_id', user.id).single()
-  if (data && editorRef.current) {
-    setNoteId(data.id)
-    if (data.content && editorRef.current.innerHTML !== data.content) {
-      editorRef.current.innerHTML = data.content
+    const { data } = await supabase.from('quick_notes').select('*').eq('user_id', user.id).single()
+    if (data && editorRef.current) {
+      setNoteId(data.id)
+      if (data.content && editorRef.current.innerHTML !== data.content) {
+        editorRef.current.innerHTML = data.content
+      }
     }
   }
-}
 
   const handleInput = () => {
     setSaved(false)
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(async () => {
       const content = editorRef.current?.innerHTML || ''
-if (!content || content === '<br>') return
+      if (!content || content === '<br>') return
       if (noteId) {
         await supabase.from('quick_notes').update({ content, updated_at: new Date().toISOString() }).eq('id', noteId)
       } else {
@@ -338,6 +468,158 @@ if (!content || content === '<br>') return
   )
 }
 
+// ============ BAR CHART ============
+interface DailyCompletion { date: string; count: number; tasks: { task_name: string; due_date: string | null }[] }
+
+function CompletionChart({ user }: { user: User }) {
+  const [view, setView] = useState<'7days' | 'month'>('7days')
+  const [currentMonth, setCurrentMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() } })
+  const [data, setData] = useState<DailyCompletion[]>([])
+  const [selectedDay, setSelectedDay] = useState<DailyCompletion | null>(null)
+
+  useEffect(() => { fetchData() }, [user, view, currentMonth])
+
+  const fetchData = async () => {
+    let startDate: string, endDate: string
+    if (view === '7days') {
+      const end = new Date(); end.setHours(0, 0, 0, 0)
+      const start = new Date(end); start.setDate(start.getDate() - 6)
+      startDate = start.toISOString().split('T')[0]
+      endDate = end.toISOString().split('T')[0]
+    } else {
+      startDate = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, '0')}-01`
+      const lastDay = new Date(currentMonth.year, currentMonth.month + 1, 0).getDate()
+      endDate = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    }
+
+    const { data: rows } = await supabase.from('daily_completions')
+      .select('*').eq('user_id', user.id).gte('date', startDate).lte('date', endDate)
+      .order('date')
+
+    if (!rows) return
+
+    const grouped: Record<string, DailyCompletion> = {}
+    rows.forEach(r => {
+      if (!grouped[r.date]) grouped[r.date] = { date: r.date, count: 0, tasks: [] }
+      grouped[r.date].count++
+      grouped[r.date].tasks.push({ task_name: r.task_name, due_date: r.due_date })
+    })
+
+    // Fill in missing days
+    const result: DailyCompletion[] = []
+    const start = new Date(startDate + 'T00:00:00')
+    const end = new Date(endDate + 'T00:00:00')
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const ds = d.toISOString().split('T')[0]
+      result.push(grouped[ds] || { date: ds, count: 0, tasks: [] })
+    }
+    setData(result)
+  }
+
+  const maxCount = Math.max(...data.map(d => d.count), 1)
+  const today = new Date().toISOString().split('T')[0]
+
+  const formatBarLabel = (dateStr: string) => {
+    const d = new Date(dateStr + 'T00:00:00')
+    if (view === '7days') {
+      const day = d.toLocaleDateString('en-US', { weekday: 'short' })
+      return { top: day, bottom: `${d.getMonth() + 1}/${d.getDate()}` }
+    } else {
+      return { top: String(d.getDate()), bottom: '' }
+    }
+  }
+
+  return (
+    <div className="rounded-xl border p-4" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Tasks completed</span>
+        <div className="flex items-center gap-2">
+          {view === 'month' && (
+            <>
+              <button onClick={() => setCurrentMonth(m => { const nm = m.month - 1; return nm < 0 ? { year: m.year - 1, month: 11 } : { ...m, month: nm } })}
+                className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>◀</button>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                {new Date(currentMonth.year, currentMonth.month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              </span>
+              <button onClick={() => setCurrentMonth(m => { const nm = m.month + 1; return nm > 11 ? { year: m.year + 1, month: 0 } : { ...m, month: nm } })}
+                className="text-xs px-2 py-1 rounded-lg" style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>▶</button>
+            </>
+          )}
+          <button onClick={() => setView('7days')}
+            className="text-xs px-2.5 py-1 rounded-lg"
+            style={{ background: view === '7days' ? 'var(--morandi-pink-text)' : 'var(--morandi-pink)', color: view === '7days' ? 'white' : 'var(--morandi-pink-text)' }}>
+            7 days
+          </button>
+          <button onClick={() => setView('month')}
+            className="text-xs px-2.5 py-1 rounded-lg"
+            style={{ background: view === 'month' ? 'var(--morandi-pink-text)' : 'var(--morandi-pink)', color: view === 'month' ? 'white' : 'var(--morandi-pink-text)' }}>
+            Month
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-end gap-1" style={{ height: '100px' }}>
+        {data.map(d => {
+          const isToday = d.date === today
+          const height = d.count === 0 ? 4 : Math.max(12, (d.count / maxCount) * 80)
+          const label = formatBarLabel(d.date)
+          return (
+            <div key={d.date} className="flex flex-col items-center flex-1 gap-1">
+              {d.count > 0 && (
+                <span className="text-xs font-medium" style={{ color: isToday ? 'var(--morandi-pink-text)' : '#C4A8B0', fontSize: view === 'month' ? '8px' : '10px' }}>
+                  {d.count}
+                </span>
+              )}
+              <button
+                onClick={() => d.count > 0 && setSelectedDay(d)}
+                style={{
+                  width: '100%', height: `${height}px`,
+                  background: isToday ? 'var(--morandi-pink-text)' : '#EEC4CC',
+                  borderRadius: '6px 6px 0 0',
+                  cursor: d.count > 0 ? 'pointer' : 'default',
+                  border: 'none', transition: 'opacity 0.15s'
+                }}
+                onMouseEnter={e => { if (d.count > 0) (e.target as HTMLElement).style.opacity = '0.8' }}
+                onMouseLeave={e => (e.target as HTMLElement).style.opacity = '1'}
+              />
+              <span style={{ fontSize: view === 'month' ? '8px' : '9px', color: isToday ? 'var(--morandi-pink-text)' : 'var(--text-muted)', fontWeight: isToday ? '600' : '400', textAlign: 'center', lineHeight: 1.2 }}>
+                {label.top}
+              </span>
+              {label.bottom && <span style={{ fontSize: '8px', color: 'var(--text-muted)', lineHeight: 1 }}>{label.bottom}</span>}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Day popup */}
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDay(null)}>
+          <div className="rounded-2xl shadow-2xl p-5 w-full max-w-sm" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {new Date(selectedDay.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </span>
+              <button onClick={() => setSelectedDay(null)} className="text-xl" style={{ color: 'var(--text-muted)' }}>&times;</button>
+            </div>
+            <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>{selectedDay.count} task{selectedDay.count !== 1 ? 's' : ''} completed</p>
+            <div className="space-y-2">
+              {selectedDay.tasks.map((t, i) => (
+                <div key={i} className="flex items-center gap-2 py-2 px-3 rounded-lg" style={{ background: 'var(--morandi-pink)' }}>
+                  <i className="ti ti-circle-check" style={{ fontSize: '13px', color: 'var(--morandi-pink-text)' }} />
+                  <div className="flex-1">
+                    <p className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>{t.task_name}</p>
+                    {t.due_date && <p className="text-xs opacity-70" style={{ color: 'var(--morandi-pink-text)' }}>Due: {t.due_date}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ============ QUICK ADD MODAL ============
 const SECTIONS = [
   { id: 'todays-tasks', name: "Today's Tasks" },
@@ -351,7 +633,6 @@ const SECTIONS = [
   { id: 'tok', name: 'TOK' },
   { id: 'ee', name: 'EE' },
   { id: 'cas', name: 'CAS' },
-  
   { id: 'lirae', name: 'Lirae' },
   { id: 'common-app', name: 'Common App' },
   { id: 'essays', name: 'Essays' },
@@ -514,17 +795,18 @@ export default function HomePage({ user, onTaskChange, showQuickAdd: externalSho
   const [plannerSlots, setPlannerSlots] = useState<PlannerBlock[]>([])
   const [loading, setLoading] = useState(true)
   const [todayStats, setTodayStats] = useState(() => {
-  const savedDate = localStorage.getItem('done_today_date')
-  const today = new Date().toISOString().split('T')[0]
-  const done = savedDate === today ? parseInt(localStorage.getItem('done_today') || '0') : 0
-  return { total: 0, done, deadlines: 0 }
-})
+    const savedDate = localStorage.getItem('done_today_date')
+    const today = new Date().toISOString().split('T')[0]
+    const done = savedDate === today ? parseInt(localStorage.getItem('done_today') || '0') : 0
+    return { total: 0, done, deadlines: 0 }
+  })
   const [internalShowQuickAdd, setInternalShowQuickAdd] = useState(false)
-const showQuickAdd = externalShowQuickAdd || internalShowQuickAdd
-const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.() }
   const [transferredSlots, setTransferredSlots] = useState<string[]>(() => {
-  try { return JSON.parse(sessionStorage.getItem('transferred_slots') || '[]') } catch { return [] }
-})
+    try { return JSON.parse(sessionStorage.getItem('transferred_slots') || '[]') } catch { return [] }
+  })
+
+  const showQuickAdd = externalShowQuickAdd || internalShowQuickAdd
+  const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.() }
 
   const todayStr = new Date().toISOString().split('T')[0]
 
@@ -551,14 +833,19 @@ const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.(
     const todayTaskList = tasks.filter(t => t.section_id === 'todays-tasks')
     setTodayTasks(todayTaskList)
     const savedDate = localStorage.getItem('done_today_date')
-const today = new Date().toISOString().split('T')[0]
-const savedDone = savedDate === today ? parseInt(localStorage.getItem('done_today') || '0') : 0
-setTodayStats({
-  total: todayTaskList.length,
-  done: savedDone,
-  deadlines: deadlines.filter(d => d.due_date === todayStr).length,
-})
+    const savedDone = savedDate === todayStr ? parseInt(localStorage.getItem('done_today') || '0') : 0
+    setTodayStats({
+      total: todayTaskList.length,
+      done: savedDone,
+      deadlines: deadlines.filter(d => d.due_date === todayStr).length,
+    })
     setLoading(false)
+  }
+
+  const recordCompletion = async (task: Task) => {
+    await supabase.from('daily_completions').upsert({
+      user_id: user.id, date: todayStr, task_name: task.task, due_date: task.due_date,
+    }, { onConflict: 'user_id,date,task_name' })
   }
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
@@ -587,10 +874,10 @@ setTodayStats({
     if (transferredSlots.includes(slot.id)) return
     if (todayTasks.some(t => t.task === slot.title)) return
     setTransferredSlots(prev => {
-  const updated = [...prev, slot.id]
-  sessionStorage.setItem('transferred_slots', JSON.stringify(updated))
-  return updated
-})
+      const updated = [...prev, slot.id]
+      sessionStorage.setItem('transferred_slots', JSON.stringify(updated))
+      return updated
+    })
     const { data } = await supabase.from('tasks').insert({
       user_id: user.id, section_id: 'todays-tasks', task: slot.title,
       notes: slot.notes || '', due_date: null, progress: '0%',
@@ -657,14 +944,15 @@ setTodayStats({
                     if (isDone) {
                       updateTask(task.id, { progress: '0%' })
                     } else {
+                      await recordCompletion(task)
                       setTodayTasks(prev => {
                         const updated = prev.filter(t => t.id !== task.id)
                         setTodayStats(s => {
-  const newDone = s.done + 1
-  localStorage.setItem('done_today', String(newDone))
-localStorage.setItem('done_today_date', new Date().toISOString().split('T')[0])
-  return { ...s, total: updated.length, done: newDone }
-})
+                          const newDone = s.done + 1
+                          localStorage.setItem('done_today', String(newDone))
+                          localStorage.setItem('done_today_date', todayStr)
+                          return { ...s, total: updated.length, done: newDone }
+                        })
                         return updated
                       })
                       await supabase.from('tasks').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', task.id)
@@ -702,10 +990,10 @@ localStorage.setItem('done_today_date', new Date().toISOString().split('T')[0])
         <QuickNote user={user} />
       </div>
 
-      {/* CALENDAR + TIMER */}
+      {/* CALENDAR + COUNTDOWN */}
       <div className="grid grid-cols-2 gap-3">
         <MiniCalendar tasks={allTasks} deadlines={allDeadlines} />
-        <Timer />
+        <CountdownSection user={user} />
       </div>
 
       {/* TODAY'S PLANNER */}
@@ -756,9 +1044,15 @@ localStorage.setItem('done_today_date', new Date().toISOString().split('T')[0])
         )}
       </div>
 
+      {/* BAR CHART */}
+      <CompletionChart user={user} />
+
+      {/* FLOATING TIMER */}
+      <FloatingTimer />
+
       {showQuickAdd && (
-  <QuickAddModal user={user} onClose={closeQuickAdd} onTaskAdded={() => { fetchAll(); onTaskChange?.() }} />
-)}
+        <QuickAddModal user={user} onClose={closeQuickAdd} onTaskAdded={() => { fetchAll(); onTaskChange?.() }} />
+      )}
     </div>
   )
 }
