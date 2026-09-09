@@ -350,7 +350,7 @@ const SECTIONS = [
   { id: 'tok', name: 'TOK' },
   { id: 'ee', name: 'EE' },
   { id: 'cas', name: 'CAS' },
-  { id: 'sat', name: 'SAT' },
+  
   { id: 'lirae', name: 'Lirae' },
   { id: 'common-app', name: 'Common App' },
   { id: 'essays', name: 'Essays' },
