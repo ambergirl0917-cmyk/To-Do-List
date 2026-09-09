@@ -238,14 +238,14 @@ function QuickNote({ user }: { user: User }) {
   useEffect(() => { loadNote() }, [user])
 
   const loadNote = async () => {
-    const { data } = await supabase.from('quick_notes').select('*').eq('user_id', user.id).single()
-    if (data && editorRef.current) {
-      if (editorRef.current.innerHTML !== data.content) {
-        editorRef.current.innerHTML = data.content || ''
-      }
-      setNoteId(data.id)
+  const { data } = await supabase.from('quick_notes').select('*').eq('user_id', user.id).single()
+  if (data && editorRef.current) {
+    setNoteId(data.id)
+    if (data.content && editorRef.current.innerHTML !== data.content) {
+      editorRef.current.innerHTML = data.content
     }
   }
+}
 
   const handleInput = () => {
     setSaved(false)
