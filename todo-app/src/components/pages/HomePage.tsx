@@ -482,11 +482,11 @@ function CompletionChart({ user }: { user: User }) {
   const fetchData = async () => {
     let startDate: string, endDate: string
     if (view === '7days') {
-      const end = new Date(); end.setHours(0, 0, 0, 0)
-      const start = new Date(end); start.setDate(start.getDate() - 6)
-      startDate = start.toISOString().split('T')[0]
-      endDate = end.toISOString().split('T')[0]
-    } else {
+  endDate = new Date().toISOString().split('T')[0]
+  const start = new Date(endDate + 'T00:00:00')
+  start.setDate(start.getDate() - 6)
+  startDate = start.toISOString().split('T')[0]
+} else {
       startDate = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, '0')}-01`
       const lastDay = new Date(currentMonth.year, currentMonth.month + 1, 0).getDate()
       endDate = `${currentMonth.year}-${String(currentMonth.month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
@@ -574,7 +574,7 @@ function CompletionChart({ user }: { user: User }) {
                 onClick={() => d.count > 0 && setSelectedDay(d)}
                 style={{
                   width: '100%', height: `${height}px`,
-                  background: isToday ? 'var(--morandi-pink-text)' : '#EEC4CC',
+                  background: isToday ? '#E8A0B0' : '#EEC4CC',
                   borderRadius: '6px 6px 0 0',
                   cursor: d.count > 0 ? 'pointer' : 'default',
                   border: 'none', transition: 'opacity 0.15s'
