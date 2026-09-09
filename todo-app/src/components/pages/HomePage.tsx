@@ -514,14 +514,23 @@ startDate = `${sy}-${smo}-${sdy}`
 
     // Fill in missing days
     const result: DailyCompletion[] = []
-for (let i = 6; i >= 0; i--) {
-  const d = new Date()
-  d.setDate(d.getDate() - i)
-  const y = d.getFullYear()
-  const mo = String(d.getMonth() + 1).padStart(2, '0')
-  const dy = String(d.getDate()).padStart(2, '0')
-  const ds = `${y}-${mo}-${dy}`
-  result.push(grouped[ds] || { date: ds, count: 0, tasks: [] })
+if (view === '7days') {
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const y = d.getFullYear()
+    const mo = String(d.getMonth() + 1).padStart(2, '0')
+    const dy = String(d.getDate()).padStart(2, '0')
+    const ds = `${y}-${mo}-${dy}`
+    result.push(grouped[ds] || { date: ds, count: 0, tasks: [] })
+  }
+} else {
+  const start = new Date(startDate + 'T00:00:00')
+  const end = new Date(endDate + 'T00:00:00')
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const ds = d.toISOString().split('T')[0]
+    result.push(grouped[ds] || { date: ds, count: 0, tasks: [] })
+  }
 }
 setData(result)
   }
