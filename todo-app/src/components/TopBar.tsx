@@ -143,7 +143,7 @@ export default function TopBar({
                       style={{ background: item.isUrgent ? 'var(--urgent-today-bg)' : '#FEF9E8' }}>
                       <i className={item.type === 'deadline' ? 'ti ti-calendar-event' : 'ti ti-circle-check'}
                         style={{ fontSize: '13px', color: item.isUrgent ? 'var(--urgent-today-text)' : '#B08830', flexShrink: 0 }} />
-                      <span className="text-sm flex-1 truncate"
+                      <span className="text-sm flex-1 break-words"
                         style={{ color: item.isUrgent ? '#8A6060' : '#786050' }}>
                         {item.title}
                       </span>
