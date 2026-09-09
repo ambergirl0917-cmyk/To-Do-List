@@ -55,11 +55,13 @@ const weekRef = useRef<HTMLDivElement>(null)
   ].length
 
   useEffect(() => {
-    const handle = (e: MouseEvent) => {
-      if (urgentRef.current && !urgentRef.current.contains(e.target as Node)) {
-        setShowUrgent(false)
-      }
-    }
+  const handle = (e: MouseEvent) => {
+    if (urgentRef.current && !urgentRef.current.contains(e.target as Node)) setShowUrgent(false)
+    if (weekRef.current && !weekRef.current.contains(e.target as Node)) setShowWeek(false)
+  }
+  document.addEventListener('mousedown', handle)
+  return () => document.removeEventListener('mousedown', handle)
+}, [])
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
   }, [])
