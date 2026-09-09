@@ -62,9 +62,6 @@ const weekRef = useRef<HTMLDivElement>(null)
   document.addEventListener('mousedown', handle)
   return () => document.removeEventListener('mousedown', handle)
 }, [])
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
 
  const allUrgentItems = [
   ...urgentTasks.map(t => ({ type: 'task' as const, id: t.id, title: t.task, date: t.due_date, isUrgent: true })),
