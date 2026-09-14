@@ -852,12 +852,16 @@ export default function HomePage({ user, onTaskChange, showQuickAdd: externalSho
     const todayTaskList = tasks.filter(t => t.section_id === 'todays-tasks')
     setTodayTasks(todayTaskList)
     const savedDate = localStorage.getItem('done_today_date')
-    const savedDone = savedDate === todayStr ? parseInt(localStorage.getItem('done_today') || '0') : 0
-    setTodayStats({
-      total: todayTaskList.length,
-      done: savedDone,
-      deadlines: deadlines.filter(d => d.due_date === todayStr).length,
-    })
+if (savedDate !== todayStr) {
+  localStorage.setItem('done_today', '0')
+  localStorage.setItem('done_today_date', todayStr)
+}
+const savedDone = savedDate === todayStr ? parseInt(localStorage.getItem('done_today') || '0') : 0
+setTodayStats({
+  total: todayTaskList.length,
+  done: savedDone,
+  deadlines: deadlines.filter(d => d.due_date === todayStr).length,
+})
     setLoading(false)
   }
 
