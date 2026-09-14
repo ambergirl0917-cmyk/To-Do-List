@@ -827,7 +827,8 @@ export default function HomePage({ user, onTaskChange, showQuickAdd: externalSho
   const showQuickAdd = externalShowQuickAdd || internalShowQuickAdd
   const closeQuickAdd = () => { setInternalShowQuickAdd(false); onCloseQuickAdd?.() }
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const now = new Date()
+const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
   useEffect(() => { fetchAll() }, [user])
 
