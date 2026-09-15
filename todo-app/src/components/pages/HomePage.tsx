@@ -469,7 +469,7 @@ function QuickNote({ user }: { user: User }) {
 }
 
 // ============ BAR CHART ============
-interface DailyCompletion { date: string; count: number; tasks: { task_name: string; due_date: string | null }[] }
+interface DailyCompletion { date: string; count: number; tasks: { task_name: string; due_date: string | null; task_id: string | null }[] }
 
 function CompletionChart({ user }: { user: User }) {
   const [view, setView] = useState<'7days' | 'month'>('7days')
@@ -509,7 +509,7 @@ startDate = `${sy}-${smo}-${sdy}`
     rows.forEach(r => {
       if (!grouped[r.date]) grouped[r.date] = { date: r.date, count: 0, tasks: [] }
       grouped[r.date].count++
-      grouped[r.date].tasks.push({ task_name: r.task_name, due_date: r.due_date })
+      grouped[r.date].tasks.push({ task_name: r.task_name, due_date: r.due_date, task_id: r.task_id })
     })
 
     // Fill in missing days
@@ -623,14 +623,34 @@ setData(result)
             <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>{selectedDay.count} task{selectedDay.count !== 1 ? 's' : ''} completed</p>
             <div className="space-y-2">
               {selectedDay.tasks.map((t, i) => (
-                <div key={i} className="flex items-center gap-2 py-2 px-3 rounded-lg" style={{ background: 'var(--morandi-pink)' }}>
-                  <i className="ti ti-circle-check" style={{ fontSize: '13px', color: 'var(--morandi-pink-text)' }} />
-                  <div className="flex-1">
-                    <p className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>{t.task_name}</p>
-                    {t.due_date && <p className="text-xs opacity-70" style={{ color: 'var(--morandi-pink-text)' }}>Due: {t.due_date}</p>}
-                  </div>
-                </div>
-              ))}
+  <div key={i} className="flex items-center gap-2 py-2 px-3 rounded-lg" style={{ background: 'var(--morandi-pink)' }}>
+    <i className="ti ti-circle-check" style={{ fontSize: '13px', color: 'var(--morandi-pink-text)' }} />
+    <div className="flex-1">
+      <p className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>{t.task_name}</p>
+      {t.due_date && <p className="text-xs opacity-70" style={{ color: 'var(--morandi-pink-text)' }}>Due: {t.due_date}</p>}
+    </div>
+    {selectedDay.date === today && t.task_id && (
+      <button
+        onClick={async () => {
+          // Unarchive task and remove from completions
+          await supabase.from('tasks').update({ is_archived: false, section_id: 'todays-tasks', updated_at: new Date().toISOString() }).eq('id', t.task_id)
+          await supabase.from('daily_completions').delete().eq('task_id', t.task_id).eq('date', selectedDay.date)
+          // Update local state
+          setSelectedDay(prev => {
+            if (!prev) return null
+            const updatedTasks = prev.tasks.filter((_, idx) => idx !== i)
+            return { ...prev, count: updatedTasks.length, tasks: updatedTasks }
+          })
+          setData(prev => prev.map(d => d.date === selectedDay.date ? { ...d, count: d.count - 1, tasks: d.tasks.filter((_, idx) => idx !== i) } : d))
+          fetchData()
+        }}
+        className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
+        style={{ background: 'rgba(255,255,255,0.4)', color: 'var(--morandi-pink-text)' }}>
+        ↩ Undo
+      </button>
+    )}
+  </div>
+))}
             </div>
           </div>
         </div>
@@ -867,10 +887,10 @@ setTodayStats({
   }
 
   const recordCompletion = async (task: Task) => {
-    await supabase.from('daily_completions').upsert({
-      user_id: user.id, date: todayStr, task_name: task.task, due_date: task.due_date,
-    }, { onConflict: 'user_id,date,task_name' })
-  }
+  await supabase.from('daily_completions').upsert({
+    user_id: user.id, date: todayStr, task_name: task.task, due_date: task.due_date, task_id: task.id,
+  }, { onConflict: 'user_id,date,task_name' })
+}
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     setTodayTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
