@@ -659,15 +659,8 @@ setData(result)
     return { ...prev, count: updatedTasks.length, tasks: updatedTasks }
   })
   setData(prev => prev.map(d => d.date === selectedDay.date ? { ...d, count: d.count - 1, tasks: d.tasks.filter((_, idx) => idx !== i) } : d))
-  fetchData()
+fetchData()
 }}
-            if (!prev) return null
-            const updatedTasks = prev.tasks.filter((_, idx) => idx !== i)
-            return { ...prev, count: updatedTasks.length, tasks: updatedTasks }
-          })
-          setData(prev => prev.map(d => d.date === selectedDay.date ? { ...d, count: d.count - 1, tasks: d.tasks.filter((_, idx) => idx !== i) } : d))
-          fetchData()
-        }}
         className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
         style={{ background: 'rgba(255,255,255,0.4)', color: 'var(--morandi-pink-text)' }}>
         ↩ Undo
