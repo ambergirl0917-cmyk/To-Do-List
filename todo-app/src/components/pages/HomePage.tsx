@@ -629,7 +629,7 @@ setData(result)
       <p className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>{t.task_name}</p>
       {t.due_date && <p className="text-xs opacity-70" style={{ color: 'var(--morandi-pink-text)' }}>Due: {t.due_date}</p>}
     </div>
-    {selectedDay.date === today && t.task_id && (
+    {t.task_id && (
       <button
         onClick={async () => {
           // Unarchive task and remove from completions
