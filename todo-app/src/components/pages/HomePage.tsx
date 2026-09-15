@@ -629,14 +629,38 @@ setData(result)
       <p className="text-sm" style={{ color: 'var(--morandi-pink-text)' }}>{t.task_name}</p>
       {t.due_date && <p className="text-xs opacity-70" style={{ color: 'var(--morandi-pink-text)' }}>Due: {t.due_date}</p>}
     </div>
-    {t.task_id && (
+    {(
       <button
         onClick={async () => {
-          // Unarchive task and remove from completions
-          await supabase.from('tasks').update({ is_archived: false, section_id: 'todays-tasks', updated_at: new Date().toISOString() }).eq('id', t.task_id)
-          await supabase.from('daily_completions').delete().eq('task_id', t.task_id).eq('date', selectedDay.date)
-          // Update local state
-          setSelectedDay(prev => {
+  const { data: archivedTask } = await supabase.from('tasks')
+    .select('*').eq('user_id', user.id).eq('task', t.task_name).eq('is_archived', true)
+    .order('updated_at', { ascending: false }).limit(1).single()
+  
+  if (archivedTask) {
+    await supabase.from('tasks').update({ is_archived: false, section_id: 'todays-tasks', updated_at: new Date().toISOString() }).eq('id', archivedTask.id)
+  } else {
+    await supabase.from('tasks').insert({
+      user_id: user.id, section_id: 'todays-tasks', task: t.task_name,
+      notes: '', due_date: t.due_date || null, progress: '0%',
+      position: 999, is_archived: false, checklist: [],
+      reminder_days: null, is_recurring: false, recur_interval: null,
+    })
+  }
+  
+  if (t.task_id) {
+    await supabase.from('daily_completions').delete().eq('task_id', t.task_id).eq('date', selectedDay.date)
+  } else {
+    await supabase.from('daily_completions').delete().eq('task_name', t.task_name).eq('date', selectedDay.date).eq('user_id', user.id)
+  }
+  
+  setSelectedDay(prev => {
+    if (!prev) return null
+    const updatedTasks = prev.tasks.filter((_, idx) => idx !== i)
+    return { ...prev, count: updatedTasks.length, tasks: updatedTasks }
+  })
+  setData(prev => prev.map(d => d.date === selectedDay.date ? { ...d, count: d.count - 1, tasks: d.tasks.filter((_, idx) => idx !== i) } : d))
+  fetchData()
+}}
             if (!prev) return null
             const updatedTasks = prev.tasks.filter((_, idx) => idx !== i)
             return { ...prev, count: updatedTasks.length, tasks: updatedTasks }
