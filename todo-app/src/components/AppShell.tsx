@@ -16,9 +16,10 @@ import WeeklyPlannerPage from './pages/WeeklyPlannerPage'
 import DeadlinesPage from './pages/DeadlinesPage'
 import ArchivePage from './pages/ArchivePage'
 import SettingsPage from './pages/SettingsPage'
+import AttendancePage from './pages/AttendancePage'
 import { Task, Deadline } from '@/lib/types'
 
-export type PageId = 'home' | 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings'
+export type PageId = 'home' | 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings'| 'attendance'
 
 interface AppShellProps { user: User }
 
@@ -43,6 +44,7 @@ const PAGE_LABELS: Record<PageId, string> = {
   deadlines: 'Deadlines',
   archive: 'Archive',
   settings: 'Settings',
+  attendance: 'Attendance',
 }
 
 export default function AppShell({ user }: AppShellProps) {
@@ -140,6 +142,7 @@ export default function AppShell({ user }: AppShellProps) {
       case 'deadlines': return <DeadlinesPage user={user} onDeadlineChange={fetchUrgentDeadlines} />
       case 'archive': return <ArchivePage user={user} />
       case 'settings': return <SettingsPage user={user} />
+        case 'attendance': return <AttendancePage user={user} />
       default: return <HomePage user={user} onTaskChange={handleTaskChange} />
     }
   }
