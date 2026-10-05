@@ -116,10 +116,8 @@ const dayName = DAY_NAMES[jsDay === 0 ? 6 : jsDay - 1]
   const blocksLeft = MAX_TOTAL - totalAbsent
 
   const now = new Date()
-  const currentWeekStart = getWeekStart(now)
-  const currentWeekDates = getWeekDates(currentWeekStart)
-  const weeklyAbsent = absences.filter(r => currentWeekDates.includes(r.date)).length
-  const weeklyLeft = 6 - weeklyAbsent
+  const weeklyAbsent = absences.filter(r => weekDates.includes(r.date)).length
+const weeklyLeft = 6 - weeklyAbsent
 
   const subjectCounts: Record<string, number> = {}
   SUBJECTS.forEach(s => { subjectCounts[s] = absences.filter(r => r.subject === s).length })
@@ -176,18 +174,22 @@ const dayName = DAY_NAMES[jsDay === 0 ? 6 : jsDay - 1]
           <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Absences by subject</p>
           <div className="grid grid-cols-3 gap-2">
             {SUBJECTS.map(s => {
-              const count = getSubjectTotal(s)
-              const max = Math.floor(TOTAL_WEEKS * (Object.values(SCHEDULE).filter(day => Object.values(day).includes(s)).length) / 3 / 5 * 5)
-              const pct = max > 0 ? count / max : 0
-              const color = pct < 0.5 ? '#507060' : pct < 0.8 ? '#907860' : '#C07070'
-              const bg = pct < 0.5 ? '#C8D8CC' : pct < 0.8 ? '#F5EEE0' : '#FDE8E8'
-              return (
-                <div key={s} className="rounded-lg p-3" style={{ background: bg }}>
-                  <p className="text-xs font-medium" style={{ color }}>{s}</p>
-                  <p className="text-lg font-medium" style={{ color }}>{count} absent</p>
-                </div>
-              )
-            })}
+  const count = getSubjectTotal(s)
+  const classesPerWeek = Object.values(SCHEDULE).filter(day => Object.values(day).includes(s)).length
+  const totalClasses = classesPerWeek * TOTAL_WEEKS
+  const max = Math.floor(totalClasses / 3)
+  const left = max - count
+  const pct = max > 0 ? count / max : 0
+  const color = pct < 0.5 ? '#507060' : pct < 0.8 ? '#907860' : '#C07070'
+  const bg = pct < 0.5 ? '#C8D8CC' : pct < 0.8 ? '#F5EEE0' : '#FDE8E8'
+  return (
+    <div key={s} className="rounded-lg p-3" style={{ background: bg }}>
+      <p className="text-xs font-medium mb-1" style={{ color }}>{s}</p>
+      <p className="text-lg font-medium" style={{ color }}>{count} <span className="text-xs">absent</span></p>
+      <p className="text-xs mt-0.5" style={{ color, opacity: 0.8 }}>{left} left of {max} max</p>
+    </div>
+  )
+})}
           </div>
         </div>
       )}
