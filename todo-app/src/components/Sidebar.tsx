@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { section: 'More', items: [
     { id: 'archive' as PageId, label: 'Archive', icon: 'ti-archive' },
     { id: 'settings' as PageId, label: 'Settings', icon: 'ti-settings' },
+    { id: 'attendance' as PageId, label: 'Attendance', icon: 'ti-calendar-stats' },
   ]},
 ]
 
