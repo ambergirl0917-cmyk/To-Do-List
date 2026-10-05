@@ -36,11 +36,10 @@ interface AbsenceRecord {
 }
 
 function getWeekStart(date: Date): Date {
-  const d = new Date(date)
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   d.setDate(d.getDate() + diff)
-  d.setHours(0, 0, 0, 0)
   return d
 }
 
@@ -48,7 +47,10 @@ function getWeekDates(weekStart: Date): string[] {
   return DAY_NAMES.map((_, i) => {
     const d = new Date(weekStart)
     d.setDate(weekStart.getDate() + i)
-    return d.toISOString().split('T')[0]
+    const y = d.getFullYear()
+    const mo = String(d.getMonth() + 1).padStart(2, '0')
+    const dy = String(d.getDate()).padStart(2, '0')
+    return `${y}-${mo}-${dy}`
   })
 }
 
@@ -96,7 +98,8 @@ export default function AttendancePage({ user }: Props) {
       setHolidayInput(null)
       return
     }
-    const dayName = DAY_NAMES[new Date(date + 'T00:00:00').getDay() - 1]
+    const jsDay = new Date(date + 'T00:00:00').getDay()
+const dayName = DAY_NAMES[jsDay === 0 ? 6 : jsDay - 1]
     if (!dayName) return
     const inserts = BLOCKS.map(block => ({
       user_id: user.id, date, block, subject: SCHEDULE[dayName][block], is_holiday: true, holiday_label: label
