@@ -23,6 +23,8 @@ const NAV_ITEMS = [
     { id: 'college' as PageId, label: 'College App', icon: 'ti-school' },
     { id: 'planner' as PageId, label: 'Planner', icon: 'ti-calendar' },
     { id: 'deadlines' as PageId, label: 'Deadlines', icon: 'ti-calendar-event' },
+    { id: 'drafts' as PageId, label: 'Drafts', icon: 'ti-file-text' },
+    { id: 'drafts' as PageId, label: 'Drafts', icon: 'ti-file-text' },
   ]},
   { section: 'More', items: [
     { id: 'archive' as PageId, label: 'Archive', icon: 'ti-archive' },
