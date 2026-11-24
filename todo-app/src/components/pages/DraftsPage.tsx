@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { JSONContent } from '@tiptap/react'
+import { Mark, mergeAttributes } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -16,8 +17,37 @@ interface Draft {
   content: JSONContent | null
   word_limit: number | null
   count_mode: 'body' | 'all'
+  folder_id: string | null
   updated_at: string
 }
+
+interface Folder { id: string; name: string }
+
+interface DraftComment {
+  id: string
+  draft_id: string
+  body: string
+  resolved: boolean
+  created_at: string
+}
+
+const CommentMark = Mark.create({
+  name: 'comment',
+  inclusive: false,
+  addAttributes() {
+    return {
+      commentId: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-comment-id'),
+        renderHTML: (attrs: Record<string, any>) => (attrs.commentId ? { 'data-comment-id': attrs.commentId } : {}),
+      },
+    }
+  },
+  parseHTML() { return [{ tag: 'span[data-comment-id]' }] },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes, { class: 'draft-comment' }), 0]
+  },
+})
 
 function nodeText(node: JSONContent): string {
   if (node.type === 'text') return node.text || ''
@@ -51,11 +81,14 @@ const EDITOR_CSS = `
 .draft-editor .ProseMirror ol { list-style: decimal; padding-left: 1.4em; margin: 0 0 0.9em 0; }
 .draft-editor .ProseMirror blockquote { border-left: 3px solid #EEC4CC; padding-left: 1em; color: var(--text-secondary); margin: 0 0 0.9em 0; }
 .draft-editor .ProseMirror mark { background: #F7D9E1; border-radius: 3px; padding: 0 2px; }
+.draft-editor .ProseMirror .draft-comment { background: #FBEBC8; border-bottom: 2px solid #E8C98A; }
 .draft-editor .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--text-muted); float: left; height: 0; pointer-events: none; }
 `
 
-function DraftEditor({ draft, onPatch, onDelete, onBack }: {
+function DraftEditor({ user, draft, folders, onPatch, onDelete, onBack }: {
+  user: User
   draft: Draft
+  folders: Folder[]
   onPatch: (id: string, patch: Partial<Draft>) => void
   onDelete: (id: string) => void
   onBack: () => void
@@ -65,8 +98,11 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
   const [mode, setMode] = useState<'body' | 'all'>(draft.count_mode || 'body')
   const [docJson, setDocJson] = useState<JSONContent | null>(draft.content)
   const [status, setStatus] = useState('')
+  const [comments, setComments] = useState<DraftComment[]>([])
+  const [pending, setPending] = useState<{ from: number; to: number; text: string } | null>(null)
+  const [noteText, setNoteText] = useState('')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pending = useRef<JSONContent | null>(null)
+  const pendingSave = useRef<JSONContent | null>(null)
 
   const saveContent = async (json: JSONContent) => {
     const { error } = await supabase.from('drafts')
@@ -77,12 +113,12 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
   }
 
   const scheduleSave = (json: JSONContent) => {
-    pending.current = json
+    pendingSave.current = json
     setStatus('Saving...')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(async () => {
       const ok = await saveContent(json)
-      if (ok) pending.current = null
+      if (ok) pendingSave.current = null
       setStatus(ok ? 'Saved' : 'Not saved')
     }, 1000)
   }
@@ -91,6 +127,7 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
       Highlight,
+      CommentMark,
       Placeholder.configure({ placeholder: 'Start writing...' }),
     ],
     content: draft.content || '',
@@ -106,10 +143,19 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
   useEffect(() => {
     return () => {
       if (timer.current) clearTimeout(timer.current)
-      if (pending.current) saveContent(pending.current)
+      if (pendingSave.current) saveContent(pendingSave.current)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from('draft_comments').select('*')
+        .eq('draft_id', draft.id).order('created_at', { ascending: true })
+      if (data) setComments(data as DraftComment[])
+    }
+    load()
+  }, [draft.id])
 
   const count = useMemo(() => countWords(docJson, mode), [docJson, mode])
   const outline = useMemo(() => getOutline(docJson), [docJson])
@@ -117,6 +163,24 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
   const pct = limitNum > 0 ? Math.min(count / limitNum, 1) : 0
   const over = limitNum > 0 && count > limitNum
   const barColor = over ? '#C07070' : limitNum > 0 && count / limitNum >= 0.9 ? '#D9B77A' : '#EEC4CC'
+
+  const commentTexts = useMemo(() => {
+    const out: Record<string, string> = {}
+    if (!editor) return out
+    editor.state.doc.descendants(node => {
+      if (node.isText) {
+        node.marks.forEach(m => {
+          if (m.type.name === 'comment') {
+            const id = m.attrs.commentId as string
+            out[id] = (out[id] || '') + (node.text || '')
+          }
+        })
+      }
+      return true
+    })
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, docJson])
 
   const saveTitle = async () => {
     const t = title.trim() || 'Untitled draft'
@@ -140,6 +204,11 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
     onPatch(draft.id, { count_mode: m })
   }
 
+  const moveToFolder = async (folderId: string | null) => {
+    await supabase.from('drafts').update({ folder_id: folderId }).eq('id', draft.id)
+    onPatch(draft.id, { folder_id: folderId })
+  }
+
   const jumpTo = (index: number) => {
     if (!editor) return
     let n = 0
@@ -153,6 +222,77 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
       return true
     })
     if (target >= 0) editor.chain().focus().setTextSelection(target + 1).scrollIntoView().run()
+  }
+
+  const findCommentPos = (id: string): number => {
+    if (!editor) return -1
+    let found = -1
+    editor.state.doc.descendants((node, pos) => {
+      if (found >= 0) return false
+      if (node.isText && node.marks.some(m => m.type.name === 'comment' && m.attrs.commentId === id)) {
+        found = pos
+        return false
+      }
+      return true
+    })
+    return found
+  }
+
+  const jumpToComment = (id: string) => {
+    if (!editor) return
+    const pos = findCommentPos(id)
+    if (pos >= 0) editor.chain().focus().setTextSelection(pos).scrollIntoView().run()
+  }
+
+  const removeCommentMark = (id: string) => {
+    if (!editor) return
+    const { state, view } = editor
+    let tr = state.tr
+    state.doc.descendants((node, pos) => {
+      if (node.isText) {
+        const m = node.marks.find(mk => mk.type.name === 'comment' && mk.attrs.commentId === id)
+        if (m) tr = tr.removeMark(pos, pos + node.nodeSize, m)
+      }
+      return true
+    })
+    view.dispatch(tr)
+  }
+
+  const startComment = () => {
+    if (!editor) return
+    const { from, to } = editor.state.selection
+    if (from === to) { alert('Select the text you want to comment on first.'); return }
+    const text = editor.state.doc.textBetween(from, to, ' ')
+    setPending({ from, to, text })
+    setNoteText('')
+  }
+
+  const saveComment = async () => {
+    if (!editor || !pending || !noteText.trim()) return
+    const id = crypto.randomUUID()
+    const { data, error } = await supabase.from('draft_comments')
+      .insert({ id, draft_id: draft.id, user_id: user.id, body: noteText.trim() })
+      .select().single()
+    if (error || !data) { alert('Could not save the comment. Please try again.'); return }
+    editor.chain()
+      .setTextSelection({ from: pending.from, to: pending.to })
+      .setMark('comment', { commentId: id })
+      .run()
+    setComments(prev => [...prev, data as DraftComment])
+    setPending(null)
+    setNoteText('')
+  }
+
+  const resolveComment = async (id: string) => {
+    await supabase.from('draft_comments').update({ resolved: true }).eq('id', id)
+    removeCommentMark(id)
+    setComments(prev => prev.map(c => c.id === id ? { ...c, resolved: true } : c))
+  }
+
+  const deleteComment = async (id: string) => {
+    await supabase.from('draft_comments').delete().eq('id', id)
+    removeCommentMark(id)
+    setComments(prev => prev.filter(c => c.id !== id))
   }
 
   const tbBtn = (label: string, active: boolean, onClick: () => void) => (
@@ -169,6 +309,9 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
     </button>
   )
 
+  const openComments = comments.filter(c => !c.resolved)
+  const resolvedComments = comments.filter(c => c.resolved)
+
   return (
     <div className="space-y-3">
       <style>{EDITOR_CSS}</style>
@@ -181,9 +324,17 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
           onChange={e => setTitle(e.target.value)}
           onBlur={saveTitle}
           onKeyDown={e => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-          className="flex-1 text-lg font-medium outline-none bg-transparent px-1"
+          className="flex-1 min-w-0 text-lg font-medium outline-none bg-transparent px-1"
           style={{ color: 'var(--text-primary)' }}
         />
+        <select
+          value={draft.folder_id || ''}
+          onChange={e => moveToFolder(e.target.value || null)}
+          className="text-xs px-2 py-1.5 rounded-lg outline-none max-w-[130px]"
+          style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-secondary)', background: 'var(--card-bg)' }}>
+          <option value="">No folder</option>
+          {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
         <button
           onClick={() => { if (confirm(`Delete "${draft.title}"? This cannot be undone.`)) onDelete(draft.id) }}
           className="text-xs px-2.5 py-1.5 rounded-lg"
@@ -232,6 +383,7 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
           {tbBtn('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run())}
           {tbBtn('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run())}
           {tbBtn('Highlight', editor.isActive('highlight'), () => editor.chain().focus().toggleHighlight().run())}
+          {tbBtn('Comment', false, startComment)}
           <span className="w-px h-4 mx-1" style={{ background: 'var(--divider)' }} />
           {tbBtn('H1', editor.isActive('heading', { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run())}
           {tbBtn('H2', editor.isActive('heading', { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run())}
@@ -246,23 +398,86 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
         </div>
       )}
 
-      <div className="flex gap-3 items-start">
-        <div className="draft-editor flex-1 min-w-0 rounded-xl border p-5" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+      <div className="flex flex-col lg:flex-row gap-3 items-start">
+        <div className="draft-editor w-full lg:flex-1 min-w-0 rounded-xl border p-5" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
           <EditorContent editor={editor} />
         </div>
 
-        {/* OUTLINE (computer only for now) */}
-        <div className="hidden lg:block w-52 flex-shrink-0 rounded-xl border p-3" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-          <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Outline</p>
-          {outline.length === 0 ? (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Add a heading (H1, H2, H3) and it shows up here.</p>
-          ) : outline.map(h => (
-            <button key={h.i} onClick={() => jumpTo(h.i)}
-              className="block w-full text-left text-xs py-1 rounded truncate"
-              style={{ paddingLeft: `${(h.level - 1) * 12}px`, color: 'var(--text-secondary)' }}>
-              {h.text}
-            </button>
-          ))}
+        <div className="w-full lg:w-56 flex-shrink-0 space-y-3">
+          {/* OUTLINE */}
+          <div className="hidden lg:block rounded-xl border p-3" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Outline</p>
+            {outline.length === 0 ? (
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Add a heading (H1, H2, H3) and it shows up here.</p>
+            ) : outline.map(h => (
+              <button key={h.i} onClick={() => jumpTo(h.i)}
+                className="block w-full text-left text-xs py-1 rounded truncate"
+                style={{ paddingLeft: `${(h.level - 1) * 12}px`, color: 'var(--text-secondary)' }}>
+                {h.text}
+              </button>
+            ))}
+          </div>
+
+          {/* COMMENTS */}
+          <div className="rounded-xl border p-3" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Comments</p>
+
+            {pending && (
+              <div className="rounded-lg p-2.5 mb-2" style={{ background: '#FBEBC8' }}>
+                <p className="text-xs mb-1.5 truncate" style={{ color: '#907860' }}>"{pending.text}"</p>
+                <textarea
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  placeholder="Write your note..."
+                  rows={3}
+                  autoFocus
+                  className="w-full text-xs p-2 rounded-lg outline-none resize-none"
+                  style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)', background: 'white' }}
+                />
+                <div className="flex gap-1.5 mt-1.5">
+                  <button onClick={saveComment} className="flex-1 text-xs py-1.5 rounded-lg"
+                    style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>Save</button>
+                  <button onClick={() => setPending(null)} className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ background: 'white', color: 'var(--text-muted)' }}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {openComments.length === 0 && !pending && (
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Select some text and click Comment to leave yourself a note.</p>
+            )}
+
+            <div className="space-y-2">
+              {openComments.map(c => (
+                <div key={c.id} className="rounded-lg p-2.5" style={{ background: '#FDF6E6' }}>
+                  <button onClick={() => jumpToComment(c.id)} className="block w-full text-left">
+                    <p className="text-xs truncate mb-1" style={{ color: '#B09878' }}>
+                      {commentTexts[c.id] ? `"${commentTexts[c.id]}"` : '(text was deleted)'}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-primary)' }}>{c.body}</p>
+                  </button>
+                  <div className="flex gap-3 mt-1.5">
+                    <button onClick={() => resolveComment(c.id)} className="text-xs" style={{ color: '#507060' }}>Resolve</button>
+                    <button onClick={() => deleteComment(c.id)} className="text-xs" style={{ color: '#C07070' }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {resolvedComments.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>Resolved ({resolvedComments.length})</p>
+                <div className="space-y-1.5">
+                  {resolvedComments.map(c => (
+                    <div key={c.id} className="rounded-lg p-2 flex items-start gap-2" style={{ background: 'var(--section-header)' }}>
+                      <p className="text-xs flex-1" style={{ color: 'var(--text-muted)' }}>{c.body}</p>
+                      <button onClick={() => deleteComment(c.id)} className="text-xs" style={{ color: '#C07070' }}>x</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -271,25 +486,61 @@ function DraftEditor({ draft, onPatch, onDelete, onBack }: {
 
 export default function DraftsPage({ user }: Props) {
   const [drafts, setDrafts] = useState<Draft[]>([])
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchDrafts() }, [user])
+  useEffect(() => { fetchAll() }, [user])
 
-  const fetchDrafts = async () => {
-    const { data } = await supabase.from('drafts').select('*')
-      .eq('user_id', user.id).order('updated_at', { ascending: false })
-    if (data) setDrafts(data as Draft[])
+  const fetchAll = async () => {
+    const [d, f] = await Promise.all([
+      supabase.from('drafts').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
+      supabase.from('draft_folders').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+    ])
+    if (d.data) setDrafts(d.data as Draft[])
+    if (f.data) setFolders(f.data as Folder[])
     setLoading(false)
   }
 
-  const createDraft = async () => {
+  const createDraft = async (folderId: string | null = null) => {
     const { data } = await supabase.from('drafts')
-      .insert({ user_id: user.id, title: 'Untitled draft' }).select().single()
+      .insert({ user_id: user.id, title: 'Untitled draft', folder_id: folderId }).select().single()
     if (data) {
       setDrafts(prev => [data as Draft, ...prev])
       setSelectedId(data.id)
+      if (folderId) setCollapsed(prev => { const n = new Set(prev); n.delete(folderId); return n })
     }
+  }
+
+  const createFolder = async () => {
+    const name = window.prompt('Folder name (for example: College essays)')
+    if (!name || !name.trim()) return
+    const { data } = await supabase.from('draft_folders')
+      .insert({ user_id: user.id, name: name.trim() }).select().single()
+    if (data) setFolders(prev => [...prev, data as Folder])
+  }
+
+  const renameFolder = async (f: Folder) => {
+    const name = window.prompt('Rename folder', f.name)
+    if (!name || !name.trim() || name.trim() === f.name) return
+    await supabase.from('draft_folders').update({ name: name.trim() }).eq('id', f.id)
+    setFolders(prev => prev.map(x => x.id === f.id ? { ...x, name: name.trim() } : x))
+  }
+
+  const deleteFolder = async (f: Folder) => {
+    if (!confirm(`Delete the folder "${f.name}"? Your drafts inside will not be deleted. They move to "No folder".`)) return
+    await supabase.from('draft_folders').delete().eq('id', f.id)
+    setFolders(prev => prev.filter(x => x.id !== f.id))
+    setDrafts(prev => prev.map(d => d.folder_id === f.id ? { ...d, folder_id: null } : d))
+  }
+
+  const toggleFolder = (id: string) => {
+    setCollapsed(prev => {
+      const n = new Set(prev)
+      if (n.has(id)) n.delete(id); else n.add(id)
+      return n
+    })
   }
 
   const patchDraft = (id: string, patch: Partial<Draft>) => {
@@ -303,33 +554,72 @@ export default function DraftsPage({ user }: Props) {
   }
 
   const selected = drafts.find(d => d.id === selectedId) || null
+  const looseDrafts = drafts.filter(d => !d.folder_id || !folders.some(f => f.id === d.folder_id))
+
+  const draftButton = (d: Draft, indent = false) => (
+    <button key={d.id} onClick={() => setSelectedId(d.id)}
+      className="w-full text-left text-sm px-3 py-2.5 rounded-xl truncate"
+      style={{
+        marginLeft: indent ? '10px' : 0,
+        width: indent ? 'calc(100% - 10px)' : '100%',
+        background: d.id === selectedId ? 'var(--morandi-pink)' : 'var(--card-bg)',
+        color: d.id === selectedId ? 'var(--morandi-pink-text)' : 'var(--text-primary)',
+        border: '0.5px solid var(--card-border)',
+        fontWeight: d.id === selectedId ? 500 : 400,
+      }}>
+      {d.title}
+    </button>
+  )
 
   if (loading) return <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-muted)' }}>Loading...</div>
 
   return (
     <div className="flex gap-4 items-start">
       <div className={`${selectedId ? 'hidden md:block' : 'block w-full'} md:w-60 md:flex-shrink-0`}>
-        <button onClick={createDraft}
-          className="w-full text-sm py-2.5 rounded-xl mb-3"
-          style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
-          + New draft
-        </button>
+        <div className="flex gap-2 mb-3">
+          <button onClick={() => createDraft(null)}
+            className="flex-1 text-sm py-2.5 rounded-xl"
+            style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
+            + New draft
+          </button>
+          <button onClick={createFolder}
+            className="text-sm px-3 py-2.5 rounded-xl"
+            style={{ background: 'var(--morandi-sand)', color: '#907860' }}>
+            + Folder
+          </button>
+        </div>
+
         <div className="space-y-1.5">
-          {drafts.length === 0 && (
+          {drafts.length === 0 && folders.length === 0 && (
             <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>No drafts yet. Click "New draft" to start one.</p>
           )}
-          {drafts.map(d => (
-            <button key={d.id} onClick={() => setSelectedId(d.id)}
-              className="w-full text-left text-sm px-3 py-2.5 rounded-xl truncate"
-              style={{
-                background: d.id === selectedId ? 'var(--morandi-pink)' : 'var(--card-bg)',
-                color: d.id === selectedId ? 'var(--morandi-pink-text)' : 'var(--text-primary)',
-                border: '0.5px solid var(--card-border)',
-                fontWeight: d.id === selectedId ? 500 : 400,
-              }}>
-              {d.title}
-            </button>
-          ))}
+
+          {folders.map(f => {
+            const inFolder = drafts.filter(d => d.folder_id === f.id)
+            const isCollapsed = collapsed.has(f.id)
+            return (
+              <div key={f.id} className="space-y-1.5">
+                <div className="flex items-center gap-1 px-1 pt-1.5">
+                  <button onClick={() => toggleFolder(f.id)} className="flex-1 text-left text-xs font-medium truncate"
+                    style={{ color: 'var(--text-secondary)' }}>
+                    {isCollapsed ? '▶' : '▼'} {f.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({inFolder.length})</span>
+                  </button>
+                  <button onClick={() => createDraft(f.id)} title="New draft in this folder" className="text-xs px-1.5" style={{ color: 'var(--morandi-pink-text)' }}>+</button>
+                  <button onClick={() => renameFolder(f)} title="Rename folder" className="text-xs px-1.5" style={{ color: 'var(--text-muted)' }}>Rename</button>
+                  <button onClick={() => deleteFolder(f)} title="Delete folder" className="text-xs px-1.5" style={{ color: '#C07070' }}>x</button>
+                </div>
+                {!isCollapsed && inFolder.map(d => draftButton(d, true))}
+                {!isCollapsed && inFolder.length === 0 && (
+                  <p className="text-xs px-3" style={{ color: 'var(--text-muted)' }}>Empty folder</p>
+                )}
+              </div>
+            )
+          })}
+
+          {folders.length > 0 && looseDrafts.length > 0 && (
+            <p className="text-xs px-1 pt-2" style={{ color: 'var(--text-muted)' }}>No folder</p>
+          )}
+          {looseDrafts.map(d => draftButton(d))}
         </div>
       </div>
 
@@ -337,7 +627,9 @@ export default function DraftsPage({ user }: Props) {
         {selected ? (
           <DraftEditor
             key={selected.id}
+            user={user}
             draft={selected}
+            folders={folders}
             onPatch={patchDraft}
             onDelete={deleteDraft}
             onBack={() => setSelectedId(null)}
