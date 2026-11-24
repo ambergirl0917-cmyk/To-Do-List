@@ -21,7 +21,7 @@ interface Draft {
   updated_at: string
 }
 
-interface Folder { id: string; name: string }
+interface Folder { id: string; name: string; color: string | null }
 
 interface DraftComment {
   id: string
@@ -29,6 +29,20 @@ interface DraftComment {
   body: string
   resolved: boolean
   created_at: string
+}
+
+const FOLDER_COLORS: Record<string, { bg: string; fg: string }> = {
+  pink: { bg: '#FAE4EC', fg: '#9A7080' },
+  sand: { bg: '#F5EEE0', fg: '#907860' },
+  blue: { bg: '#D8E8F8', fg: '#5A7898' },
+  sage: { bg: '#C8D8CC', fg: '#507060' },
+  mauve: { bg: '#DDD0E0', fg: '#706080' },
+  peach: { bg: '#F6DFD2', fg: '#A07860' },
+  gray: { bg: '#E8E4DE', fg: '#7A7468' },
+}
+
+function colorOf(key: string | null | undefined) {
+  return FOLDER_COLORS[key || 'pink'] || FOLDER_COLORS.pink
 }
 
 const CommentMark = Mark.create({
@@ -318,7 +332,7 @@ function DraftEditor({ user, draft, folders, onPatch, onDelete, onBack }: {
 
       <div className="flex items-center gap-2">
         <button onClick={onBack} className="md:hidden text-xs px-2 py-1 rounded-lg"
-          style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>◀ Drafts</button>
+          style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>◀ Back</button>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
@@ -332,7 +346,7 @@ function DraftEditor({ user, draft, folders, onPatch, onDelete, onBack }: {
           onChange={e => moveToFolder(e.target.value || null)}
           className="text-xs px-2 py-1.5 rounded-lg outline-none max-w-[130px]"
           style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-secondary)', background: 'var(--card-bg)' }}>
-          <option value="">No folder</option>
+          <option value="">Unsorted</option>
           {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
         </select>
         <button
@@ -487,8 +501,10 @@ function DraftEditor({ user, draft, folders, onPatch, onDelete, onBack }: {
 export default function DraftsPage({ user }: Props) {
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  // null = showing the folder grid, 'none' = the Unsorted folder, otherwise a folder id
+  const [activeFolder, setActiveFolder] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [menuFolder, setMenuFolder] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchAll() }, [user])
@@ -503,48 +519,55 @@ export default function DraftsPage({ user }: Props) {
     setLoading(false)
   }
 
-  const createDraft = async (folderId: string | null = null) => {
-    const { data } = await supabase.from('drafts')
-      .insert({ user_id: user.id, title: 'Untitled draft', folder_id: folderId }).select().single()
-    if (data) {
-      setDrafts(prev => [data as Draft, ...prev])
-      setSelectedId(data.id)
-      if (folderId) setCollapsed(prev => { const n = new Set(prev); n.delete(folderId); return n })
-    }
-  }
+  const folderIds = useMemo(() => new Set(folders.map(f => f.id)), [folders])
+  const draftsIn = (key: string) =>
+    key === 'none'
+      ? drafts.filter(d => !d.folder_id || !folderIds.has(d.folder_id))
+      : drafts.filter(d => d.folder_id === key)
 
   const createFolder = async () => {
     const name = window.prompt('Folder name (for example: College essays)')
     if (!name || !name.trim()) return
     const { data } = await supabase.from('draft_folders')
-      .insert({ user_id: user.id, name: name.trim() }).select().single()
+      .insert({ user_id: user.id, name: name.trim(), color: 'pink' }).select().single()
     if (data) setFolders(prev => [...prev, data as Folder])
   }
 
   const renameFolder = async (f: Folder) => {
+    setMenuFolder(null)
     const name = window.prompt('Rename folder', f.name)
     if (!name || !name.trim() || name.trim() === f.name) return
     await supabase.from('draft_folders').update({ name: name.trim() }).eq('id', f.id)
     setFolders(prev => prev.map(x => x.id === f.id ? { ...x, name: name.trim() } : x))
   }
 
+  const recolorFolder = async (f: Folder, color: string) => {
+    setFolders(prev => prev.map(x => x.id === f.id ? { ...x, color } : x))
+    await supabase.from('draft_folders').update({ color }).eq('id', f.id)
+  }
+
   const deleteFolder = async (f: Folder) => {
-    if (!confirm(`Delete the folder "${f.name}"? Your drafts inside will not be deleted. They move to "No folder".`)) return
+    setMenuFolder(null)
+    if (!confirm(`Delete the folder "${f.name}"? Your drafts inside will not be deleted. They move to Unsorted.`)) return
     await supabase.from('draft_folders').delete().eq('id', f.id)
     setFolders(prev => prev.filter(x => x.id !== f.id))
     setDrafts(prev => prev.map(d => d.folder_id === f.id ? { ...d, folder_id: null } : d))
   }
 
-  const toggleFolder = (id: string) => {
-    setCollapsed(prev => {
-      const n = new Set(prev)
-      if (n.has(id)) n.delete(id); else n.add(id)
-      return n
-    })
+  const createDraft = async () => {
+    if (!activeFolder) return
+    const folderId = activeFolder === 'none' ? null : activeFolder
+    const { data } = await supabase.from('drafts')
+      .insert({ user_id: user.id, title: 'Untitled draft', folder_id: folderId }).select().single()
+    if (data) {
+      setDrafts(prev => [data as Draft, ...prev])
+      setSelectedId(data.id)
+    }
   }
 
   const patchDraft = (id: string, patch: Partial<Draft>) => {
     setDrafts(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d))
+    if ('folder_id' in patch) setActiveFolder(patch.folder_id ? patch.folder_id : 'none')
   }
 
   const deleteDraft = async (id: string) => {
@@ -553,73 +576,135 @@ export default function DraftsPage({ user }: Props) {
     setSelectedId(null)
   }
 
-  const selected = drafts.find(d => d.id === selectedId) || null
-  const looseDrafts = drafts.filter(d => !d.folder_id || !folders.some(f => f.id === d.folder_id))
+  const openFolder = (key: string) => {
+    setMenuFolder(null)
+    setSelectedId(null)
+    setActiveFolder(key)
+  }
 
-  const draftButton = (d: Draft, indent = false) => (
-    <button key={d.id} onClick={() => setSelectedId(d.id)}
-      className="w-full text-left text-sm px-3 py-2.5 rounded-xl truncate"
-      style={{
-        marginLeft: indent ? '10px' : 0,
-        width: indent ? 'calc(100% - 10px)' : '100%',
-        background: d.id === selectedId ? 'var(--morandi-pink)' : 'var(--card-bg)',
-        color: d.id === selectedId ? 'var(--morandi-pink-text)' : 'var(--text-primary)',
-        border: '0.5px solid var(--card-border)',
-        fontWeight: d.id === selectedId ? 500 : 400,
-      }}>
-      {d.title}
-    </button>
-  )
+  const selected = drafts.find(d => d.id === selectedId) || null
 
   if (loading) return <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-muted)' }}>Loading...</div>
 
-  return (
-    <div className="flex gap-4 items-start">
-      <div className={`${selectedId ? 'hidden md:block' : 'block w-full'} md:w-60 md:flex-shrink-0`}>
-        <div className="flex gap-2 mb-3">
-          <button onClick={() => createDraft(null)}
-            className="flex-1 text-sm py-2.5 rounded-xl"
-            style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
-            + New draft
-          </button>
+  /* ---------- FOLDER GRID ---------- */
+  if (!activeFolder) {
+    const unsortedCount = draftsIn('none').length
+    const gray = FOLDER_COLORS.gray
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>Drafts</p>
           <button onClick={createFolder}
-            className="text-sm px-3 py-2.5 rounded-xl"
-            style={{ background: 'var(--morandi-sand)', color: '#907860' }}>
-            + Folder
+            className="text-sm px-4 py-2 rounded-xl"
+            style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
+            + New folder
           </button>
         </div>
 
-        <div className="space-y-1.5">
-          {drafts.length === 0 && folders.length === 0 && (
-            <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>No drafts yet. Click "New draft" to start one.</p>
-          )}
+        {menuFolder && <div className="fixed inset-0 z-10" onClick={() => setMenuFolder(null)} />}
 
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {folders.map(f => {
-            const inFolder = drafts.filter(d => d.folder_id === f.id)
-            const isCollapsed = collapsed.has(f.id)
+            const c = colorOf(f.color)
+            const count = draftsIn(f.id).length
             return (
-              <div key={f.id} className="space-y-1.5">
-                <div className="flex items-center gap-1 px-1 pt-1.5">
-                  <button onClick={() => toggleFolder(f.id)} className="flex-1 text-left text-xs font-medium truncate"
-                    style={{ color: 'var(--text-secondary)' }}>
-                    {isCollapsed ? '▶' : '▼'} {f.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({inFolder.length})</span>
-                  </button>
-                  <button onClick={() => createDraft(f.id)} title="New draft in this folder" className="text-xs px-1.5" style={{ color: 'var(--morandi-pink-text)' }}>+</button>
-                  <button onClick={() => renameFolder(f)} title="Rename folder" className="text-xs px-1.5" style={{ color: 'var(--text-muted)' }}>Rename</button>
-                  <button onClick={() => deleteFolder(f)} title="Delete folder" className="text-xs px-1.5" style={{ color: '#C07070' }}>x</button>
+              <div key={f.id} className="relative">
+                <div
+                  onClick={() => openFolder(f.id)}
+                  className="aspect-square rounded-2xl p-4 flex flex-col justify-between cursor-pointer"
+                  style={{ background: c.bg }}>
+                  <div />
+                  <div>
+                    <p className="text-sm font-medium break-words" style={{ color: c.fg }}>{f.name}</p>
+                    <p className="text-xs mt-0.5" style={{ color: c.fg, opacity: 0.75 }}>{count} {count === 1 ? 'draft' : 'drafts'}</p>
+                  </div>
                 </div>
-                {!isCollapsed && inFolder.map(d => draftButton(d, true))}
-                {!isCollapsed && inFolder.length === 0 && (
-                  <p className="text-xs px-3" style={{ color: 'var(--text-muted)' }}>Empty folder</p>
+                <button
+                  onClick={e => { e.stopPropagation(); setMenuFolder(menuFolder === f.id ? null : f.id) }}
+                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-base"
+                  style={{ background: 'rgba(255,255,255,0.6)', color: c.fg }}>
+                  ⋯
+                </button>
+                {menuFolder === f.id && (
+                  <div className="absolute top-11 right-2.5 z-20 rounded-xl shadow-lg p-3 w-44"
+                    style={{ background: 'var(--card-bg)', border: '0.5px solid var(--card-border)' }}>
+                    <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>Color</p>
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {Object.entries(FOLDER_COLORS).map(([key, val]) => (
+                        <button key={key} onClick={() => recolorFolder(f, key)}
+                          className="w-6 h-6 rounded-full"
+                          style={{ background: val.bg, border: (f.color || 'pink') === key ? `2px solid ${val.fg}` : '1px solid rgba(0,0,0,0.08)' }} />
+                      ))}
+                    </div>
+                    <button onClick={() => renameFolder(f)} className="block w-full text-left text-xs py-1.5" style={{ color: 'var(--text-secondary)' }}>Rename</button>
+                    <button onClick={() => deleteFolder(f)} className="block w-full text-left text-xs py-1.5" style={{ color: '#C07070' }}>Delete folder</button>
+                  </div>
                 )}
               </div>
             )
           })}
 
-          {folders.length > 0 && looseDrafts.length > 0 && (
-            <p className="text-xs px-1 pt-2" style={{ color: 'var(--text-muted)' }}>No folder</p>
+          <div
+            onClick={() => openFolder('none')}
+            className="aspect-square rounded-2xl p-4 flex flex-col justify-between cursor-pointer"
+            style={{ background: gray.bg }}>
+            <div />
+            <div>
+              <p className="text-sm font-medium" style={{ color: gray.fg }}>Unsorted</p>
+              <p className="text-xs mt-0.5" style={{ color: gray.fg, opacity: 0.75 }}>{unsortedCount} {unsortedCount === 1 ? 'draft' : 'drafts'}</p>
+            </div>
+          </div>
+        </div>
+
+        {folders.length === 0 && (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Click "+ New folder" to make your first folder, like "College essays" or "Econ IA".</p>
+        )}
+      </div>
+    )
+  }
+
+  /* ---------- INSIDE A FOLDER ---------- */
+  const activeFolderObj = activeFolder === 'none' ? null : folders.find(f => f.id === activeFolder) || null
+  const activeName = activeFolder === 'none' ? 'Unsorted' : activeFolderObj?.name || 'Folder'
+  const activeColor = activeFolder === 'none' ? FOLDER_COLORS.gray : colorOf(activeFolderObj?.color)
+  const list = draftsIn(activeFolder)
+
+  return (
+    <div className="flex gap-4 items-start">
+      <div className={`${selectedId ? 'hidden md:block' : 'block w-full'} md:w-56 md:flex-shrink-0`}>
+        <button onClick={() => { setActiveFolder(null); setSelectedId(null) }}
+          className="text-xs mb-3 px-2.5 py-1.5 rounded-lg"
+          style={{ background: 'var(--morandi-pink)', color: 'var(--morandi-pink-text)' }}>
+          ◀ All folders
+        </button>
+
+        <div className="rounded-xl px-3 py-2.5 mb-3" style={{ background: activeColor.bg }}>
+          <p className="text-sm font-medium truncate" style={{ color: activeColor.fg }}>{activeName}</p>
+          <p className="text-xs" style={{ color: activeColor.fg, opacity: 0.75 }}>{list.length} {list.length === 1 ? 'draft' : 'drafts'}</p>
+        </div>
+
+        <button onClick={createDraft}
+          className="w-full text-sm py-2.5 rounded-xl mb-3"
+          style={{ background: 'var(--btn-bg)', color: 'var(--btn-text)' }}>
+          + New draft
+        </button>
+
+        <div className="space-y-1.5">
+          {list.length === 0 && (
+            <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>No drafts in here yet.</p>
           )}
-          {looseDrafts.map(d => draftButton(d))}
+          {list.map(d => (
+            <button key={d.id} onClick={() => setSelectedId(d.id)}
+              className="w-full text-left text-sm px-3 py-2.5 rounded-xl truncate"
+              style={{
+                background: d.id === selectedId ? activeColor.bg : 'var(--card-bg)',
+                color: d.id === selectedId ? activeColor.fg : 'var(--text-primary)',
+                border: '0.5px solid var(--card-border)',
+                fontWeight: d.id === selectedId ? 500 : 400,
+              }}>
+              {d.title}
+            </button>
+          ))}
         </div>
       </div>
 
