@@ -17,10 +17,10 @@ import DeadlinesPage from './pages/DeadlinesPage'
 import ArchivePage from './pages/ArchivePage'
 import SettingsPage from './pages/SettingsPage'
 import AttendancePage from './pages/AttendancePage'
+import DraftsPage from './pages/DraftsPage'
 import { Task, Deadline } from '@/lib/types'
 
-export type PageId = 'home' | 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings'| 'attendance'
-
+export type PageId = 'home' | 'overview' | 'subjects' | 'ibcore' | 'sat' | 'extracurricular' | 'college' | 'planner' | 'deadlines' | 'archive' | 'settings' | 'attendance' | 'drafts'
 interface AppShellProps { user: User }
 
 function localDateStr(offsetDays = 0): string {
@@ -45,6 +45,7 @@ const PAGE_LABELS: Record<PageId, string> = {
   archive: 'Archive',
   settings: 'Settings',
   attendance: 'Attendance',
+  drafts: 'Drafts',
 }
 
 export default function AppShell({ user }: AppShellProps) {
@@ -143,6 +144,7 @@ export default function AppShell({ user }: AppShellProps) {
       case 'archive': return <ArchivePage user={user} />
       case 'settings': return <SettingsPage user={user} />
         case 'attendance': return <AttendancePage user={user} />
+      case 'drafts': return <DraftsPage user={user} />
       default: return <HomePage user={user} onTaskChange={handleTaskChange} />
     }
   }
