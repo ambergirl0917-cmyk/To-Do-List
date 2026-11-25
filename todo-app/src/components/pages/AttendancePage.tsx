@@ -19,12 +19,16 @@ const BLOCK_TIMES: Record<number, string> = {
   1: '08:15–09:35', 2: '09:55–11:15', 3: '12:05–13:25', 4: '13:45–15:05'
 }
 
-const SEMESTER_START = new Date('2026-08-31')
-const SEMESTER_END = new Date('2027-06-30')
-const TOTAL_WEEKS = Math.ceil((SEMESTER_END.getTime() - SEMESTER_START.getTime()) / (7 * 24 * 60 * 60 * 1000))
-const MAX_TOTAL = Math.floor(TOTAL_WEEKS * 20 / 3)
-
 const SUBJECTS = ['English', 'Counseling', 'TOK', 'Economics', 'Chinese', 'Biology', 'BM', 'Math', 'Advisory']
+
+const START = new Date(2026, 7, 31)
+const END = new Date(2027, 0, 20)
+
+const TONES = {
+  good: { bg: '#C8D8CC', fg: '#507060' },
+  warn: { bg: '#F5EEE0', fg: '#907860' },
+  bad: { bg: '#FDE8E8', fg: '#C07070' },
+}
 
 interface AbsenceRecord {
   id: string
@@ -34,6 +38,32 @@ interface AbsenceRecord {
   is_holiday: boolean
   holiday_label: string | null
 }
+
+function localStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const START_STR = localStr(START)
+const END_STR = localStr(END)
+
+function maxAllowed(total: number): number {
+  return Math.max(0, Math.ceil(total / 3) - 1)
+}
+
+function dayNameOf(dateStr: string): string | undefined {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const js = new Date(y, m - 1, d).getDay()
+  return DAY_NAMES[js === 0 ? 6 : js - 1]
+}
+
+const SCHOOL_DATES: string[] = (() => {
+  const out: string[] = []
+  for (let d = new Date(START); d <= END; d.setDate(d.getDate() + 1)) {
+    const wd = d.getDay()
+    if (wd !== 0 && wd !== 6) out.push(localStr(d))
+  }
+  return out
+})()
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -47,10 +77,7 @@ function getWeekDates(weekStart: Date): string[] {
   return DAY_NAMES.map((_, i) => {
     const d = new Date(weekStart)
     d.setDate(weekStart.getDate() + i)
-    const y = d.getFullYear()
-    const mo = String(d.getMonth() + 1).padStart(2, '0')
-    const dy = String(d.getDate()).padStart(2, '0')
-    return `${y}-${mo}-${dy}`
+    return localStr(d)
   })
 }
 
@@ -91,16 +118,17 @@ export default function AttendancePage({ user }: Props) {
   }
 
   const markHoliday = async (date: string, label: string) => {
-    const existingHoliday = records.find(r => r.date === date && r.is_holiday)
+    const existingHoliday = records.some(r => r.date === date && r.is_holiday)
     if (existingHoliday) {
-      setRecords(prev => prev.filter(r => r.date !== date || !r.is_holiday))
+      setRecords(prev => prev.filter(r => !(r.date === date && r.is_holiday)))
       await supabase.from('absences').delete().eq('user_id', user.id).eq('date', date).eq('is_holiday', true)
       setHolidayInput(null)
       return
     }
-    const jsDay = new Date(date + 'T00:00:00').getDay()
-const dayName = DAY_NAMES[jsDay === 0 ? 6 : jsDay - 1]
-    if (!dayName) return
+    const dayName = dayNameOf(date)
+    if (!dayName) { setHolidayInput(null); return }
+    setRecords(prev => prev.filter(r => r.date !== date))
+    await supabase.from('absences').delete().eq('user_id', user.id).eq('date', date)
     const inserts = BLOCKS.map(block => ({
       user_id: user.id, date, block, subject: SCHEDULE[dayName][block], is_holiday: true, holiday_label: label
     }))
@@ -109,26 +137,52 @@ const dayName = DAY_NAMES[jsDay === 0 ? 6 : jsDay - 1]
     setHolidayInput(null)
   }
 
+  const todayStr = localStr(new Date())
   const weekDates = getWeekDates(weekStart)
 
-  const absences = records.filter(r => !r.is_holiday)
+  const holidayDates = new Set(records.filter(r => r.is_holiday).map(r => r.date))
+  const countedDates = SCHOOL_DATES.filter(d => !holidayDates.has(d))
+  const totalBlocks = countedDates.length * 4
+  const maxTotal = maxAllowed(totalBlocks)
+
+  const absences = records.filter(r => !r.is_holiday && r.date >= START_STR && r.date <= END_STR)
   const totalAbsent = absences.length
-  const blocksLeft = MAX_TOTAL - totalAbsent
+  const blocksLeft = maxTotal - totalAbsent
 
-  const now = new Date()
+  const weekCounted = weekDates.filter(d => d >= START_STR && d <= END_STR && !holidayDates.has(d)).length * 4
+  const weeklySafe = maxAllowed(weekCounted)
   const weeklyAbsent = absences.filter(r => weekDates.includes(r.date)).length
-const weeklyLeft = 6 - weeklyAbsent
+  const weeklyLeft = weeklySafe - weeklyAbsent
 
-  const subjectCounts: Record<string, number> = {}
-  SUBJECTS.forEach(s => { subjectCounts[s] = absences.filter(r => r.subject === s).length })
+  const elapsedBlocks = countedDates.filter(d => d <= todayStr).length * 4
+  const allowedSoFar = elapsedBlocks / 3
+  const absentSoFar = absences.filter(r => r.date <= todayStr).length
+  const balance = Math.round((allowedSoFar - absentSoFar) * 10) / 10
 
-  const getSubjectTotal = (subject: string) => {
-    return records.filter(r => r.subject === subject && !r.is_holiday).length
-  }
-  const getSubjectMax = (subject: string) => {
-    const total = records.filter(r => r.subject === subject).length + TOTAL_WEEKS
-    return Math.floor(total / 3)
-  }
+  const subjectTotals: Record<string, number> = {}
+  SUBJECTS.forEach(s => { subjectTotals[s] = 0 })
+  countedDates.forEach(date => {
+    const dn = dayNameOf(date)!
+    BLOCKS.forEach(b => {
+      const s = SCHEDULE[dn][b]
+      subjectTotals[s] = (subjectTotals[s] || 0) + 1
+    })
+  })
+
+  const subjectElapsed: Record<string, number> = {}
+  SUBJECTS.forEach(s => { subjectElapsed[s] = 0 })
+  countedDates.filter(d => d <= todayStr).forEach(date => {
+    const dn = dayNameOf(date)!
+    BLOCKS.forEach(b => {
+      const s = SCHEDULE[dn][b]
+      subjectElapsed[s] = (subjectElapsed[s] || 0) + 1
+    })
+  })
+
+  const weeklyTone = weeklyLeft >= 3 ? TONES.good : weeklyLeft >= 1 ? TONES.warn : TONES.bad
+  const semPct = maxTotal > 0 ? totalAbsent / maxTotal : 1
+  const semTone = blocksLeft < 0 ? TONES.bad : semPct < 0.5 ? TONES.good : semPct < 0.8 ? TONES.warn : TONES.bad
+  const balanceTone = balance >= 1 ? TONES.good : balance >= 0 ? TONES.warn : TONES.bad
 
   const getMonthDates = () => {
     const { year, month } = currentMonth
@@ -142,6 +196,9 @@ const weeklyLeft = 6 - weeklyAbsent
     return dates
   }
 
+  const holidayModalExisting = holidayInput ? holidayDates.has(holidayInput.date) : false
+  const holidayModalLabel = holidayInput ? records.find(r => r.date === holidayInput.date && r.is_holiday)?.holiday_label : null
+
   if (loading) return <div className="flex items-center justify-center h-64 text-sm" style={{ color: 'var(--text-muted)' }}>Loading...</div>
 
   return (
@@ -149,14 +206,19 @@ const weeklyLeft = 6 - weeklyAbsent
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
 
       {/* STAT CARDS */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-xl p-4" style={{ background: weeklyLeft >= 3 ? '#C8D8CC' : weeklyLeft >= 1 ? '#F5EEE0' : '#FDE8E8' }}>
-          <p className="text-xs mb-1" style={{ color: weeklyLeft >= 3 ? '#507060' : weeklyLeft >= 1 ? '#907860' : '#C07070' }}>Blocks left this week</p>
-          <p className="text-2xl font-medium" style={{ color: weeklyLeft >= 3 ? '#507060' : weeklyLeft >= 1 ? '#907860' : '#C07070' }}>{weeklyLeft} <span className="text-sm">/ 6 safe</span></p>
+      <div className="grid grid-cols-5 gap-3">
+        <div className="rounded-xl p-4" style={{ background: weeklyTone.bg }}>
+          <p className="text-xs mb-1" style={{ color: weeklyTone.fg }}>Blocks left this week</p>
+          <p className="text-2xl font-medium" style={{ color: weeklyTone.fg }}>{weeklyLeft} <span className="text-sm">/ {weeklySafe} safe</span></p>
         </div>
-        <div className="rounded-xl p-4" style={{ background: blocksLeft > 20 ? '#C8D8CC' : blocksLeft > 5 ? '#F5EEE0' : '#FDE8E8' }}>
-          <p className="text-xs mb-1" style={{ color: blocksLeft > 20 ? '#507060' : blocksLeft > 5 ? '#907860' : '#C07070' }}>Blocks left (semester)</p>
-          <p className="text-2xl font-medium" style={{ color: blocksLeft > 20 ? '#507060' : blocksLeft > 5 ? '#907860' : '#C07070' }}>{blocksLeft} <span className="text-sm">/ {MAX_TOTAL} max</span></p>
+        <div className="rounded-xl p-4" style={{ background: semTone.bg }}>
+          <p className="text-xs mb-1" style={{ color: semTone.fg }}>Blocks left (semester)</p>
+          <p className="text-2xl font-medium" style={{ color: semTone.fg }}>{blocksLeft} <span className="text-sm">/ {maxTotal} max</span></p>
+        </div>
+        <div className="rounded-xl p-4" style={{ background: balanceTone.bg }}>
+          <p className="text-xs mb-1" style={{ color: balanceTone.fg }}>Balance up to today</p>
+          <p className="text-2xl font-medium" style={{ color: balanceTone.fg }}>{balance >= 0 ? '+' : ''}{balance.toFixed(1)}</p>
+          <p className="text-xs mt-0.5" style={{ color: balanceTone.fg, opacity: 0.8 }}>{allowedSoFar.toFixed(1)} allowed, {absentSoFar} used</p>
         </div>
         <div className="rounded-xl p-4" style={{ background: '#FAE4EC' }}>
           <p className="text-xs mb-1" style={{ color: '#9A7080' }}>Total absent</p>
@@ -171,25 +233,34 @@ const weeklyLeft = 6 - weeklyAbsent
       {/* SUBJECT BREAKDOWN */}
       {showSubjects && (
         <div className="rounded-xl border p-4" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-          <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Absences by subject</p>
+          <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>By subject</p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Each subject has its own limit: strictly under one third of that subject's blocks.</p>
           <div className="grid grid-cols-3 gap-2">
             {SUBJECTS.map(s => {
-  const count = getSubjectTotal(s)
-  const classesPerWeek = Object.values(SCHEDULE).filter(day => Object.values(day).includes(s)).length
-  const totalClasses = classesPerWeek * TOTAL_WEEKS
-  const max = Math.floor(totalClasses / 3)
-  const left = max - count
-  const pct = max > 0 ? count / max : 0
-  const color = pct < 0.5 ? '#507060' : pct < 0.8 ? '#907860' : '#C07070'
-  const bg = pct < 0.5 ? '#C8D8CC' : pct < 0.8 ? '#F5EEE0' : '#FDE8E8'
-  return (
-    <div key={s} className="rounded-lg p-3" style={{ background: bg }}>
-      <p className="text-xs font-medium mb-1" style={{ color }}>{s}</p>
-      <p className="text-lg font-medium" style={{ color }}>{count} <span className="text-xs">absent</span></p>
-      <p className="text-xs mt-0.5" style={{ color, opacity: 0.8 }}>{left} left of {max} max</p>
-    </div>
-  )
-})}
+              const count = absences.filter(r => r.subject === s).length
+              const total = subjectTotals[s] || 0
+              const max = maxAllowed(total)
+              const left = max - count
+              const soFarAbsent = absences.filter(r => r.subject === s && r.date <= todayStr).length
+              const allowedNow = (subjectElapsed[s] || 0) / 3
+              const subBalance = Math.round((allowedNow - soFarAbsent) * 10) / 10
+              const pct = max > 0 ? count / max : (count > 0 ? 1 : 0)
+              const tone = left < 0 ? TONES.bad : pct < 0.5 ? TONES.good : pct < 0.8 ? TONES.warn : TONES.bad
+              const bTone = subBalance >= 1 ? TONES.good : subBalance >= 0 ? TONES.warn : TONES.bad
+              return (
+                <div key={s} className="rounded-lg p-3" style={{ background: tone.bg }}>
+                  <p className="text-xs font-medium mb-1" style={{ color: tone.fg }}>{s}</p>
+                  <p className="text-lg font-medium" style={{ color: tone.fg }}>{count} <span className="text-xs">absent</span></p>
+                  <p className="text-xs mt-0.5" style={{ color: tone.fg, opacity: 0.8 }}>{left} left of {max} max ({total} blocks)</p>
+                  <div className="mt-2 rounded-md px-2 py-1" style={{ background: bTone.bg }}>
+                    <p className="text-xs" style={{ color: bTone.fg }}>
+                      Up to today: {subBalance >= 0 ? '+' : ''}{subBalance.toFixed(1)}
+                    </p>
+                    <p className="text-xs" style={{ color: bTone.fg, opacity: 0.8 }}>{allowedNow.toFixed(1)} allowed, {soFarAbsent} used</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -232,19 +303,17 @@ const weeklyLeft = 6 - weeklyAbsent
       {/* WEEK VIEW */}
       {view === 'week' && (
         <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-          {/* Header */}
           <div className="grid border-b" style={{ gridTemplateColumns: '80px repeat(5, 1fr)', borderColor: 'var(--divider)' }}>
             <div className="p-2" style={{ background: 'var(--section-header)' }} />
             {weekDates.map((date, i) => {
-              const isHoliday = records.some(r => r.date === date && r.is_holiday)
-              const todayStr = new Date().toISOString().split('T')[0]
+              const isHoliday = holidayDates.has(date)
               const isToday = date === todayStr
               return (
                 <div key={date} className="p-2 border-l text-center" style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
                   <p className="text-xs font-medium" style={{ color: isToday ? 'var(--morandi-pink-text)' : 'var(--text-secondary)' }}>{DAY_NAMES[i]}</p>
                   <p className="text-xs" style={{ color: isToday ? 'var(--morandi-pink-text)' : 'var(--text-muted)' }}>{fmt(date)}</p>
                   <button
-                    onClick={() => isHoliday ? markHoliday(date, '') : setHolidayInput({ date, label: '' })}
+                    onClick={() => setHolidayInput({ date, label: '' })}
                     className="text-xs mt-1 px-1.5 py-0.5 rounded"
                     style={{ background: isHoliday ? '#F5EEE0' : 'transparent', color: isHoliday ? '#907860' : 'var(--text-muted)', border: isHoliday ? 'none' : '0.5px solid var(--divider)' }}>
                     {isHoliday ? 'holiday' : '+ holiday'}
@@ -254,7 +323,6 @@ const weeklyLeft = 6 - weeklyAbsent
             })}
           </div>
 
-          {/* Blocks */}
           {BLOCKS.map(block => (
             <div key={block} className="grid border-b" style={{ gridTemplateColumns: '80px repeat(5, 1fr)', borderColor: 'var(--divider)' }}>
               <div className="p-2 border-r" style={{ background: 'var(--section-header)', borderColor: 'var(--divider)' }}>
@@ -262,12 +330,10 @@ const weeklyLeft = 6 - weeklyAbsent
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{BLOCK_TIMES[block]}</p>
               </div>
               {weekDates.map((date, i) => {
-                const dayName = DAY_NAMES[i]
-                const subject = SCHEDULE[dayName][block]
+                const subject = SCHEDULE[DAY_NAMES[i]][block]
                 const record = records.find(r => r.date === date && r.block === block)
                 const isAbsent = record && !record.is_holiday
                 const isHoliday = record?.is_holiday
-
                 return (
                   <div key={date} className="p-1.5 border-l" style={{ borderColor: 'var(--divider)' }}>
                     <button
@@ -307,14 +373,23 @@ const weeklyLeft = 6 - weeklyAbsent
               if (!dateStr) return <div key={i} className="border-r border-b" style={{ minHeight: '70px', borderColor: 'var(--divider)' }} />
               const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay()
               const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+              const inSemester = dateStr >= START_STR && dateStr <= END_STR
+              const canMark = !isWeekend && inSemester
               const dayAbsences = absences.filter(r => r.date === dateStr)
-              const isHoliday = records.some(r => r.date === dateStr && r.is_holiday)
+              const isHoliday = holidayDates.has(dateStr)
               const holidayLabel = records.find(r => r.date === dateStr && r.is_holiday)?.holiday_label
-              const todayStr = new Date().toISOString().split('T')[0]
               const isToday = dateStr === todayStr
 
               return (
-                <div key={dateStr} className="border-r border-b last:border-r-0 p-1.5" style={{ minHeight: '70px', borderColor: 'var(--divider)', background: isWeekend ? 'var(--section-header)' : 'var(--card-bg)' }}>
+                <div key={dateStr}
+                  onClick={() => canMark && setHolidayInput({ date: dateStr, label: '' })}
+                  className="border-r border-b last:border-r-0 p-1.5"
+                  style={{
+                    minHeight: '70px', borderColor: 'var(--divider)',
+                    background: isWeekend ? 'var(--section-header)' : 'var(--card-bg)',
+                    opacity: inSemester ? 1 : 0.5,
+                    cursor: canMark ? 'pointer' : 'default'
+                  }}>
                   <p className="text-xs font-medium mb-1" style={{ color: isToday ? 'var(--morandi-pink-text)' : 'var(--text-secondary)' }}>
                     {new Date(dateStr + 'T00:00:00').getDate()}
                   </p>
@@ -335,27 +410,30 @@ const weeklyLeft = 6 - weeklyAbsent
         </div>
       )}
 
-      {/* HOLIDAY INPUT MODAL */}
+      {/* HOLIDAY MODAL */}
       {holidayInput && (
         <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4" onClick={() => setHolidayInput(null)}>
           <div className="rounded-2xl shadow-xl p-5 w-full max-w-xs" style={{ background: 'var(--card-bg)' }} onClick={e => e.stopPropagation()}>
             <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
-              Mark {new Date(holidayInput.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} as holiday
+              {new Date(holidayInput.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              {holidayModalExisting ? `: ${holidayModalLabel || 'holiday'}` : ''}
             </p>
-            <input
-              value={holidayInput.label}
-              onChange={e => setHolidayInput(prev => prev ? { ...prev, label: e.target.value } : null)}
-              placeholder="Label (e.g. National Day)"
-              className="w-full text-sm px-3 py-2.5 rounded-xl outline-none mb-3"
-              style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }}
-              autoFocus
-              onKeyDown={e => e.key === 'Enter' && markHoliday(holidayInput.date, holidayInput.label)}
-            />
+            {!holidayModalExisting && (
+              <input
+                value={holidayInput.label}
+                onChange={e => setHolidayInput(prev => prev ? { ...prev, label: e.target.value } : null)}
+                placeholder="Label (e.g. National Day)"
+                className="w-full text-sm px-3 py-2.5 rounded-xl outline-none mb-3"
+                style={{ border: '0.5px solid var(--card-border)', color: 'var(--text-primary)' }}
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && markHoliday(holidayInput.date, holidayInput.label)}
+              />
+            )}
             <div className="flex gap-2">
               <button onClick={() => markHoliday(holidayInput.date, holidayInput.label)}
                 className="flex-1 text-sm py-2 rounded-xl"
-                style={{ background: '#F5EEE0', color: '#907860' }}>
-                Mark holiday
+                style={{ background: holidayModalExisting ? '#FDE8E8' : '#F5EEE0', color: holidayModalExisting ? '#C07070' : '#907860' }}>
+                {holidayModalExisting ? 'Remove holiday' : 'Mark holiday'}
               </button>
               <button onClick={() => setHolidayInput(null)}
                 className="text-sm px-4 py-2 rounded-xl"
